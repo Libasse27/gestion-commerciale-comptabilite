@@ -7,56 +7,60 @@
 // ==============================================================================
 
 const express = require('express');
-const cors = require('cors');
 const helmet = require('helmet');
-const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+
+// Importation des middlewares et configurations personnalisés
+const configuredCors = require('./middleware/cors');
+const { httpLogger } = require('./middleware/logger'); // Logger Winston pour les requêtes HTTP
+const globalErrorHandler = require('./middleware/errorHandler');
+const AppError = require('./utils/appError');
+const { apiLimiter } = require('./middleware/rateLimiter');
+
+// TODO: Importer le routeur principal
+// const mainRouter = require('./routes/index');
 
 // --- Initialisation de l'application Express ---
 const app = express();
 
-// --- Configuration des Middlewares de Sécurité et de Logging ---
+// --- Configuration des Middlewares ---
 
-// 1. Helmet: Aide à sécuriser les applications Express en définissant divers en-têtes HTTP.
+// 1. Sécurité: Helmet (définit des en-têtes HTTP de sécurité)
 app.use(helmet());
 
-// 2. CORS: Active les Cross-Origin Resource Sharing pour autoriser les requêtes du frontend.
-// La configuration est rendue dynamique via une variable d'environnement.
-const corsOptions = {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  optionsSuccessStatus: 200 // Pour les navigateurs plus anciens
-};
-app.use(cors(corsOptions));
+// 2. CORS: Active les Cross-Origin Resource Sharing avec notre configuration sécurisée
+app.use(configuredCors);
 
-// 3. Morgan: Logger de requêtes HTTP pour le développement.
-// En mode 'dev', il donne des logs concis et colorés.
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
-
-// 4. Body Parsers: Pour analyser les corps de requête JSON et URL-encoded.
-app.use(express.json({ limit: '10kb' })); // Limite la taille du corps JSON
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-
-// 5. Rate Limiter: Protège contre les attaques par force brute ou DoS.
+// 3. Rate Limiter: Protège contre les attaques par force brute ou DoS sur les routes API
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limite chaque IP à 100 requêtes par fenêtre
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Trop de requêtes envoyées depuis cette IP, veuillez réessayer après 15 minutes.'
 });
-app.use('/api', limiter); // Applique le rate limiter à toutes les routes API
+app.use('/api', limiter);
+
+// 4. Body Parsers: Pour analyser les corps de requête JSON et URL-encoded
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// 5. Logging: Utilise notre logger Winston pour tracer toutes les requêtes HTTP
+app.use(httpLogger);
+
+// 6. Applique le rate limiter général à toutes les routes /api
+app.use('/api', apiLimiter);
+
 
 // --- Routes de l'API ---
-app.get('/', (req, res) => {
-  res.status(200).send('API de l\'ERP Commercial & Comptable Sénégal - Statut : OK');
+
+// Route de "health check"
+app.get('/api/v1/health', (req, res) => {
+  res.status(200).json({ status: 'UP', message: 'API de l\'ERP Sénégal - En fonctionnement' });
 });
 
-// TODO: Implémenter les routes principales ici
-// Exemple:
-// const authRoutes = require('./routes/auth');
-// app.use('/api/v1/auth', authRoutes);
+// TODO: Utiliser le routeur principal pour toutes les routes de l'application
+// app.use('/api/v1', mainRouter);
 
 
 // --- Gestion des Erreurs 404 (Route non trouvée) ---
@@ -79,5 +83,10 @@ app.use((err, req, res, next) => {
     },
   });
 });
+
+
+// 2. Middleware de gestion d'erreurs global
+// C'est le dernier middleware de la chaîne, il attrape toutes les erreurs.
+app.use(globalErrorHandler);
 
 module.exports = app;

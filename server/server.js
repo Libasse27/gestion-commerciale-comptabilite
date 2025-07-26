@@ -3,7 +3,7 @@
 //
 // Ce fichier est responsable du cycle de vie du serveur :
 // 1. Chargement des variables d'environnement.
-// 2. Connexion à la base de données.
+// 2. Connexion aux services externes (DB, Cache...).
 // 3. Création et démarrage du serveur HTTP.
 // 4. Initialisation de Socket.IO pour le temps réel.
 // 5. Gestion des arrêts propres (graceful shutdown) et des erreurs critiques.
@@ -15,7 +15,8 @@ require('dotenv').config();
 const http = require('http');
 const app = require('./app'); // Importation de l'application Express configurée
 const { connectDB, disconnectDB } = require('./config/database');
-const { initSocket } = require('./config/socket'); // Importation de l'initialiseur Socket.IO
+const { initSocket } = require('./config/socket');
+const { logger } = require('./middleware/logger'); // <-- Importation de notre logger Winston
 
 /**
  * Gère les arrêts propres en cas d'erreurs critiques ou de signaux système.
@@ -23,22 +24,22 @@ const { initSocket } = require('./config/socket'); // Importation de l'initialis
  */
 function setupProcessEventListeners(serverInstance) {
   process.on('unhandledRejection', async (err) => {
-    console.error('ERREUR NON GÉRÉE (PROMESSE)! 💥 Arrêt progressif...', err);
+    logger.error('ERREUR NON GÉRÉE (PROMESSE)! 💥 Arrêt progressif...', { error: err });
     await disconnectDB();
     serverInstance.close(() => process.exit(1));
   });
 
   process.on('uncaughtException', (err) => {
-    console.error('EXCEPTION NON INTERCEPTÉE! 💥 Arrêt immédiat...', err);
+    logger.error('EXCEPTION NON INTERCEPTÉE! 💥 Arrêt immédiat...', { error: err });
     // Pour ce type d'erreur, il n'est pas sûr de continuer, donc on arrête brutalement.
     process.exit(1);
   });
 
   process.on('SIGINT', async () => {
-    console.warn('Signal SIGINT reçu. Démarrage de l\'arrêt propre du serveur...');
+    logger.warn('Signal SIGINT reçu. Démarrage de l\'arrêt propre du serveur...');
     await disconnectDB();
     serverInstance.close(() => {
-      console.info('Serveur arrêté proprement.');
+      logger.info('Serveur arrêté proprement.');
       process.exit(0);
     });
   });
@@ -49,31 +50,32 @@ function setupProcessEventListeners(serverInstance) {
  */
 async function startServer() {
   try {
-    console.log('====================================================');
-    console.log('🚀 Démarrage du serveur...');
-    console.log('====================================================');
+    logger.info('====================================================');
+    logger.info('🚀 Démarrage du serveur...');
+    logger.info('====================================================');
 
     // --- SÉQUENCE DE DÉMARRAGE ---
     await connectDB(); // Étape 1: Connexion à la base de données
+    // TODO: Connecter le client Redis ici si nécessaire.
 
     const server = http.createServer(app); // Étape 2: Création du serveur HTTP avec l'app Express
 
-    initSocket(server); // Étape 3: Initialisation de Socket.IO et attachement au serveur HTTP
+    initSocket(server); // Étape 3: Initialisation de Socket.IO
 
     const PORT = process.env.PORT || 5001;
     const serverInstance = server.listen(PORT, () => { // Étape 4: Démarrage de l'écoute
-      console.log('====================================================');
-      console.log('✅ SERVEUR DÉMARRÉ AVEC SUCCÈS');
-      console.log(`   - Mode       : ${process.env.NODE_ENV || 'development'}`);
-      console.log(`   - Port       : ${PORT}`);
-      console.log(`   - Origine Client Autorisée : ${process.env.CORS_ORIGIN}`);
-      console.log('====================================================');
+      logger.info('====================================================');
+      logger.info('✅ SERVEUR DÉMARRÉ AVEC SUCCÈS');
+      logger.info(`   - Mode       : ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`   - Port       : ${PORT}`);
+      logger.info(`   - PID        : ${process.pid}`);
+      logger.info('====================================================');
     });
 
     setupProcessEventListeners(serverInstance); // Étape 5: Mise en place des écouteurs pour l'arrêt propre
 
   } catch (error) {
-    console.error('❌ Échec critique lors de la séquence de démarrage du serveur.', error);
+    logger.error('❌ Échec critique lors de la séquence de démarrage du serveur.', { error });
     process.exit(1);
   }
 }
