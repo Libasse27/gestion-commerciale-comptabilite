@@ -9,6 +9,9 @@
 /node_modules
 /package-lock.json
 
+/server/node_modules
+/client/node_modules
+
 # -- Fichiers d'Environnement --
 # TRÈS IMPORTANT : Contiennent des secrets (clés d'API, mots de passe de DB, etc.).
 # Ne JAMAIS versionner ces fichiers.
