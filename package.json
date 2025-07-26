@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "ERP Commercial et Comptable pour PME sénégalaises (Monorepo Root)",
   "private": true,
-  "author": "Votre Nom <votre.email@example.com>",
+  "author": "LibDev_Prod - libdevprod@gmail.com",
   "license": "MIT",
   "workspaces": [
     "server",
