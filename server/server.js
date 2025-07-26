@@ -5,7 +5,8 @@
 // 1. Chargement des variables d'environnement.
 // 2. Connexion à la base de données.
 // 3. Création et démarrage du serveur HTTP.
-// 4. Gestion des arrêts propres (graceful shutdown) et des erreurs critiques.
+// 4. Initialisation de Socket.IO pour le temps réel.
+// 5. Gestion des arrêts propres (graceful shutdown) et des erreurs critiques.
 // ==============================================================================
 
 // --- Chargement des variables d'environnement (DOIT ÊTRE FAIT EN PREMIER) ---
@@ -14,7 +15,7 @@ require('dotenv').config();
 const http = require('http');
 const app = require('./app'); // Importation de l'application Express configurée
 const { connectDB, disconnectDB } = require('./config/database');
-// TODO: Importer et initialiser un logger plus avancé comme Winston
+const { initSocket } = require('./config/socket'); // Importation de l'initialiseur Socket.IO
 
 /**
  * Gère les arrêts propres en cas d'erreurs critiques ou de signaux système.
@@ -57,21 +58,19 @@ async function startServer() {
 
     const server = http.createServer(app); // Étape 2: Création du serveur HTTP avec l'app Express
 
-    // TODO: Initialiser Socket.io ici
-    // const { init: initSocket } = require('./config/socket');
-    // initSocket(server);
+    initSocket(server); // Étape 3: Initialisation de Socket.IO et attachement au serveur HTTP
 
     const PORT = process.env.PORT || 5001;
-    const serverInstance = server.listen(PORT, () => { // Étape 3: Démarrage de l'écoute
+    const serverInstance = server.listen(PORT, () => { // Étape 4: Démarrage de l'écoute
       console.log('====================================================');
       console.log('✅ SERVEUR DÉMARRÉ AVEC SUCCÈS');
-      console.log(`   - Mode       : ${process.env.NODE_ENV}`);
+      console.log(`   - Mode       : ${process.env.NODE_ENV || 'development'}`);
       console.log(`   - Port       : ${PORT}`);
       console.log(`   - Origine Client Autorisée : ${process.env.CORS_ORIGIN}`);
       console.log('====================================================');
     });
 
-    setupProcessEventListeners(serverInstance); // Étape 4: Mise en place des écouteurs pour l'arrêt propre
+    setupProcessEventListeners(serverInstance); // Étape 5: Mise en place des écouteurs pour l'arrêt propre
 
   } catch (error) {
     console.error('❌ Échec critique lors de la séquence de démarrage du serveur.', error);
