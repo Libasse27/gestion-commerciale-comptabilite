@@ -1,0 +1,107 @@
+# ==============================================================================
+#                 FICHIER DOCKER COMPOSE POUR L'ENVIRONNEMENT
+#                           DE DÉVELOPPEMENT
+#
+#   Usage:
+#     - Lancer tous les services en arrière-plan : docker compose up -d --build
+#     - Arrêter tous les services : docker compose down
+#     - Voir les logs : docker compose logs -f [nom-du-service]
+#
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # --- Service Base de Données MongoDB ---
+  mongodb:
+    image: mongo:6.0
+    container_name: erp-mongodb-dev
+    restart: unless-stopped
+    environment:
+      # Ces variables sont pour l'initialisation de la DB
+      # Elles doivent correspondre aux valeurs dans server/.env
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASS:-password123}
+      MONGO_INITDB_DATABASE: ${DB_NAME:-erp_senegal}
+    ports:
+      # Expose le port de la DB sur la machine hôte pour une connexion directe
+      - "27017:27017"
+    volumes:
+      # Persiste les données de la base de données entre les redémarrages
+      - mongodb_data:/data/db
+      # Optionnel: pour peupler la DB avec des données initiales
+      # - ./server/seeds:/docker-entrypoint-initdb.d
+    networks:
+      - erp-network
+
+  # --- Service de Cache Redis ---
+  redis:
+    image: redis:7-alpine
+    container_name: erp-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - erp-network
+
+  # --- Service Backend (API Node.js) ---
+  server:
+    # Construit l'image à partir du Dockerfile dans le dossier ./server
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: erp-server-dev
+    restart: unless-stopped
+    # Charge les variables d'environnement depuis ce fichier
+    env_file:
+      - ./server/.env
+    ports:
+      # Expose le port de l'API
+      - "5000:5000"
+    volumes:
+      # Monte le code source du serveur dans le conteneur
+      # Les changements dans le code local sont reflétés instantanément (hot-reload)
+      - ./server:/app
+      # Empêche le node_modules local de masquer celui du conteneur
+      - /app/node_modules
+    depends_on:
+      # S'assure que la DB et le cache sont démarrés avant le serveur
+      - mongodb
+      - redis
+    networks:
+      - erp-network
+
+  # --- Service Frontend (Application React) ---
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: erp-client-dev
+    restart: unless-stopped
+    env_file:
+      - ./client/.env
+    ports:
+      # Expose le port du serveur de développement React
+      - "3000:3000"
+    volumes:
+      # Monte le code source du client pour le hot-reloading
+      - ./client:/app
+      - /app/node_modules
+    depends_on:
+      - server
+    networks:
+      - erp-network
+
+# --- Volumes Nommés ---
+# Permet la persistance des données
+volumes:
+  mongodb_data:
+  redis_data:
+
+# --- Réseau Personnalisé ---
+# Permet aux conteneurs de communiquer entre eux en utilisant leur nom de service
+networks:
+  erp-network:
+    driver: bridge

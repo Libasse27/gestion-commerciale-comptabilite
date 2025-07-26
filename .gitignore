@@ -1,0 +1,64 @@
+# ===================================================================
+# Fichier .gitignore pour un projet Monorepo MERN (Node.js/React)
+# Ce fichier spécifie les fichiers et dossiers que Git doit ignorer.
+# ===================================================================
+
+# -- Dépendances et Fichiers de Lock --
+# Les dépendances doivent être réinstallées via `npm install` et ne doivent jamais être versionnées.
+# La règle `/node_modules` à la racine ignore ce dossier dans tous les sous-dossiers (client, server, etc.)
+/node_modules
+/package-lock.json
+
+# -- Fichiers d'Environnement --
+# TRÈS IMPORTANT : Contiennent des secrets (clés d'API, mots de passe de DB, etc.).
+# Ne JAMAIS versionner ces fichiers.
+.env
+.env.*
+!.env.example
+
+# Ignorer explicitement les fichiers .env dans les sous-projets
+/server/.env
+/client/.env
+
+# -- Dossiers de Build et de Production --
+# Ces fichiers sont générés automatiquement lors du processus de build.
+/client/dist
+/server/dist
+/build
+
+# -- Logs --
+# Les fichiers de log ne doivent pas être versionnés.
+/logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# -- Rapports de Test et de Couverture de Code --
+# Générés lors de l'exécution des tests.
+/coverage
+/reports
+.nyc_output
+
+# -- Fichiers temporaires et de cache --
+.tmp
+*.tmp
+*.swp
+.npm
+.eslintcache
+
+# -- Fichiers système d'exploitation --
+# Fichiers générés par macOS, Windows, etc.
+.DS_Store
+Thumbs.db
+._*
+
+# -- Fichiers de configuration des éditeurs/IDE --
+# Permet à chaque développeur d'avoir sa propre configuration locale.
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# -- Fichiers de dépendances optionnelles de macOS --
+.fsevents.node

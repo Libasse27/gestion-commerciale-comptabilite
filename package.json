@@ -1,0 +1,35 @@
+{
+  "name": "gestion-commerciale-comptabilite-monorepo",
+  "version": "1.0.0",
+  "description": "ERP Commercial et Comptable pour PME sénégalaises (Monorepo Root)",
+  "private": true,
+  "author": "Votre Nom <votre.email@example.com>",
+  "license": "MIT",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "postinstall": "husky install",
+    "install:all": "npm install",
+    "dev": "concurrently --kill-others-on-fail \"npm:dev --workspace=server\" \"npm:dev --workspace=client\"",
+    "build": "npm run build --workspace=client && npm run build --workspace=server",
+    "start": "npm start --workspace=server",
+    "test": "npm test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write \"**/*.{js,jsx,json,md,css}\"",
+    "docker:dev": "docker compose up -d --build",
+    "docker:stop": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "seed": "npm run seed --workspace=server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.2",
+    "prettier": "^3.6.2"
+  },
+  "lint-staged": {
+    "*.{js,jsx,json,md,css}": "prettier --write"
+  }
+}
