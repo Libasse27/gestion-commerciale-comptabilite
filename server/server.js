@@ -62,7 +62,7 @@ async function startServer() {
 
     initSocket(server); // Étape 3: Initialisation de Socket.IO
 
-    const PORT = process.env.PORT || 5001;
+    const PORT = process.env.PORT || 5000;
     const serverInstance = server.listen(PORT, () => { // Étape 4: Démarrage de l'écoute
       logger.info('====================================================');
       logger.info('✅ SERVEUR DÉMARRÉ AVEC SUCCÈS');

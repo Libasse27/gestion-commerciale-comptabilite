@@ -1,0 +1,98 @@
+/* ==============================================================================
+             Feuille de Style Spécifique pour l'Impression
+   
+   Ces styles ne sont appliqués que lors de l'impression d'une page.
+   Leur but est de nettoyer l'interface pour ne conserver que le contenu
+   essentiel et de l'optimiser pour un format papier (A4).
+   
+   L'ensemble des règles est encapsulé dans un bloc `@media print`.
+============================================================================== */
+
+@media print {
+  /* --- Masquer les éléments de l'interface non pertinents --- */
+  
+  /* Masquer la sidebar, le header, et tout ce qui a la classe 'no-print' */
+  .sidebar,
+  .header,
+  .footer,
+  .no-print {
+    display: none !important;
+  }
+
+  /* --- Styles globaux pour le corps du document imprimé --- */
+
+  body {
+    font-size: 12pt; /* Une taille de police lisible sur papier */
+    color: #000000 !important; /* Forcer le texte en noir */
+    background-color: #ffffff !important; /* Forcer le fond en blanc */
+  }
+  
+  /* Ajuster la zone de contenu principal pour qu'elle prenne toute la largeur */
+  .content-wrapper,
+  .content-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    background-color: transparent !important;
+  }
+
+  /* --- Styles pour les tableaux --- */
+
+  table, .table {
+    width: 100%;
+    border-collapse: collapse !important;
+  }
+
+  table th, table td, .table th, .table td {
+    border: 1px solid #ddd !important;
+    padding: 8px !important;
+  }
+  
+  table thead, .table thead {
+    display: table-header-group; /* Répéter l'en-tête du tableau sur chaque page */
+  }
+
+  /* --- Styles pour les liens --- */
+
+  a {
+    color: #000000 !important;
+    text-decoration: none !important;
+  }
+  
+  /* Afficher l'URL complète des liens après le texte du lien */
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    color: #333;
+  }
+  
+  /* Ne pas afficher l'URL pour les liens internes de navigation ou les boutons */
+  a[href^="#"]:after,
+  a[href^="javascript:"]:after {
+    content: "";
+  }
+  
+  /* --- Gestion des sauts de page --- */
+
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid; /* Éviter un saut de page juste après un titre */
+  }
+
+  table, figure {
+    page-break-inside: avoid; /* Éviter qu'un tableau ou une image soit coupé en deux */
+  }
+  
+  /* --- Styles spécifiques pour les documents (factures, devis) --- */
+
+  /*
+    Donnez cette classe au conteneur de votre document à imprimer
+    (ex: FacturePrintable.jsx)
+  */
+  .printable-document {
+    width: 100%;
+    padding: 20mm 15mm; /* Marges typiques pour un A4 */
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+}

@@ -1,0 +1,102 @@
+/* ==============================================================================
+             Feuille de Style Globale de l'Application
+   
+   Ce fichier contient les styles de base qui s'appliquent à l'ensemble du
+   document, ainsi que des styles de "reset" et des styles par défaut pour
+   les éléments HTML courants.
+   
+   Il est importé une seule fois dans le point d'entrée de l'application (main.jsx).
+============================================================================== */
+
+/* --- Importation de Police (Exemple avec Google Fonts) --- */
+/* C'est le meilleur endroit pour importer les polices globales. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+
+/* --- Réinitialisation et Styles de Base --- */
+
+* {
+  box-sizing: border-box; /* Comportement de boîte plus intuitif */
+}
+
+html {
+  -webkit-font-smoothing: antialiased; /* Rendu des polices plus lisse sur WebKit */
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', var(--bs-font-sans-serif); /* Utilise la police importée comme défaut */
+  background-color: var(--color-background); /* Applique la couleur de fond du thème */
+  color: var(--color-text-primary); /* Applique la couleur de texte du thème */
+  overflow-x: hidden; /* Empêche le défilement horizontal */
+}
+
+
+/* --- Styles par Défaut pour les Titres --- */
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: 0.75rem;
+}
+
+h1 { font-size: 2.25rem; }
+h2 { font-size: 1.75rem; }
+h3 { font-size: 1.5rem; }
+h4 { font-size: 1.25rem; }
+
+
+/* --- Styles par Défaut pour les Liens --- */
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-speed-fast);
+}
+
+a:hover {
+  color: var(--bs-link-hover-color);
+  text-decoration: underline;
+}
+
+
+/* --- Styles pour les Scrollbars (Barres de défilement) --- */
+/* Pour une apparence plus moderne et cohérente avec le thème */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 10px;
+  border: 2px solid var(--color-background);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-secondary);
+}
+
+
+/* --- Styles pour la surbrillance du texte --- */
+
+::selection {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+
+/* --- Utilitaires de mise en page réutilisés (qui ne sont pas dans utilities.css) --- */
+
+.full-width {
+  width: 100%;
+}
+
+.full-height {
+  height: 100%;
+}

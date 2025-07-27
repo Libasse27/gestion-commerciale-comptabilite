@@ -1,0 +1,57 @@
+/* ==============================================================================
+             Fichier de Variables CSS Globales de l'Application
+   
+   Ce fichier centralise les constantes de design qui ne sont pas des couleurs
+   (tailles, espacements, z-index, etc.).
+   
+   Ces variables sont définies dans `:root` pour être accessibles globalement
+   dans tous les autres fichiers CSS. Elles assurent la cohérence de la mise
+   en page et facilitent les ajustements de design.
+============================================================================== */
+
+:root {
+  /* --- Dimensions du Layout --- */
+  --layout-sidebar-width: 280px;
+  --layout-header-height: 64px;
+  
+  /* --- Niveaux de Superposition (z-index) --- */
+  /*
+    Définir les z-index ici permet de gérer facilement l'ordre de
+    superposition des éléments flottants (modales, tooltips, etc.).
+  */
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-modal-backdrop: 1040;
+  --z-index-offcanvas: 1050; /* Pour la sidebar en mode mobile */
+  --z-index-modal: 1060;
+  --z-index-popover: 1070;
+  --z-index-tooltip: 1080;
+  --z-index-fullscreen-loader: 9999;
+  
+  /* --- Animations et Transitions --- */
+  --transition-speed-fast: 0.15s;
+  --transition-speed-normal: 0.3s;
+  --transition-timing-function: ease-in-out;
+  
+  /* --- Espacements Standards --- */
+  /*
+    Bien que Bootstrap ait ses propres espacements (p-*, m-*),
+    vous pouvez définir les vôtres pour des besoins spécifiques.
+  */
+  --spacing-xs: 0.25rem; /* 4px */
+  --spacing-sm: 0.5rem;  /* 8px */
+  --spacing-md: 1rem;    /* 16px */
+  --spacing-lg: 1.5rem;  /* 24px */
+  --spacing-xl: 2rem;    /* 32px */
+  
+  /* --- Polices de Caractères (complément de bootstrap-custom) --- */
+  --font-size-base: 1rem;       /* 16px */
+  --font-size-sm: 0.875rem;   /* 14px */
+  --font-size-lg: 1.125rem;   /* 18px */
+  
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+}

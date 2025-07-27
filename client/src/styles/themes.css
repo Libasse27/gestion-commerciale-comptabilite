@@ -1,0 +1,113 @@
+/* ==============================================================================
+             Définition des Thèmes de l'Application (Clair/Sombre)
+   
+   Ce fichier centralise toutes les variables de couleur pour les différents
+   thèmes de l'application. Il utilise des variables CSS pour permettre un
+   changement de thème dynamique sans recharger la page.
+   
+   - `:root` définit les variables pour le thème clair (par défaut).
+   - `[data-theme="dark"]` surcharge ces variables pour le thème sombre.
+   
+   L'application basculera entre les thèmes en ajoutant/retirant l'attribut
+   `data-theme="dark"` sur l'élément `<html>` ou `<body>`.
+============================================================================== */
+
+/* --- Thème Clair (Défaut) --- */
+:root {
+  /* -- Couleurs de base -- */
+  --color-background: #ffffff; /* Fond principal */
+  --color-text-primary: #212529; /* Texte principal */
+  --color-text-secondary: #6c757d; /* Texte plus discret */
+  --color-border: #dee2e6; /* Bordures des cartes, inputs, etc. */
+  
+  /* -- Couleurs de l'interface -- */
+  --color-surface: #ffffff; /* Fond des éléments surélevés (cartes, modales) */
+  --color-surface-hover: #f8f9fa; /* Fond au survol */
+  --color-primary: var(--bs-primary); /* Réutilise la variable primaire de Bootstrap */
+  --color-secondary: var(--bs-secondary);
+  
+  /* -- Couleurs sémantiques -- */
+  --color-success: var(--bs-success);
+  --color-danger: var(--bs-danger);
+  --color-warning: var(--bs-warning);
+  --color-info: var(--bs-info);
+  
+  /* -- Ombres -- */
+  --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+
+/* --- Thème Sombre --- */
+[data-theme="dark"] {
+  /* -- Couleurs de base -- */
+  --color-background: #1a202c; /* Fond principal (bleu très sombre) */
+  --color-text-primary: #e2e8f0; /* Texte principal (gris clair) */
+  --color-text-secondary: #a0aec0; /* Texte secondaire (gris) */
+  --color-border: #4a5568; /* Bordures (gris foncé) */
+
+  /* -- Couleurs de l'interface -- */
+  --color-surface: #2d3748; /* Fond des cartes (bleu-gris sombre) */
+  --color-surface-hover: #4a5568; /* Fond au survol */
+
+  /* On peut vouloir des couleurs primaires/sémantiques plus vives sur fond sombre */
+  --color-primary: #4299e1; /* Bleu plus vif */
+  --color-secondary: #a0aec0;
+  --color-success: #48bb78;
+  --color-danger: #f56565;
+  --color-warning: #ecc94b;
+  --color-info: #4299e1;
+
+  /* -- Ombres -- */
+  /* Les ombres doivent être plus subtiles en thème sombre */
+  --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.3);
+}
+
+
+/* --- Application des variables --- */
+/*
+  Maintenant, nous lions ces variables aux composants de notre application.
+  Cela permet de ne changer que les variables ci-dessus pour thémer l'application.
+*/
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Exemple pour les cartes */
+.card {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Exemple pour les inputs de formulaire */
+.form-control {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.form-control:focus {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  border-color: var(--color-primary);
+}
+
+/* Pour le placeholder */
+.form-control::placeholder {
+  color: var(--color-text-secondary);
+}
+
+/* Assurez-vous que la sidebar et le header utilisent aussi ces variables */
+.sidebar {
+    background-color: var(--color-surface); /* Ou une couleur spécifique pour la sidebar */
+}
+
+.header {
+    background-color: var(--color-surface);
+    border-bottom-color: var(--color-border);
+}

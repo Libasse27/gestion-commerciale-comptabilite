@@ -1,0 +1,110 @@
+/* ==============================================================================
+             Feuille de Style pour les Classes Utilitaires
+   
+   Ce fichier contient des petites classes d'aide ("helper classes") qui
+   effectuent une seule tâche. Elles sont utiles pour appliquer rapidement
+   des styles courants sans avoir à écrire du CSS en ligne.
+   
+   Elles complètent les classes utilitaires de Bootstrap.
+============================================================================== */
+
+/* --- Curseurs --- */
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-not-allowed {
+  cursor: not-allowed;
+}
+
+.cursor-help {
+  cursor: help;
+}
+
+/* --- Taille de Police --- */
+/* Utile pour des ajustements fins que les classes `fs-*` de Bootstrap ne couvrent pas */
+
+.font-sm {
+  font-size: 0.875rem; /* 14px */
+}
+
+.font-xs {
+  font-size: 0.75rem; /* 12px */
+}
+
+/* --- Transitions --- */
+/* Pour ajouter une animation de transition simple à un élément */
+
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* --- Ombres --- */
+/* Pour appliquer les ombres de votre thème via une classe */
+
+.shadow-sm {
+  box-shadow: var(--shadow-sm);
+}
+
+.shadow-md {
+  box-shadow: var(--shadow-md);
+}
+
+/* --- Couleurs de Texte basées sur le Thème --- */
+/* Pour colorer du texte avec les couleurs de votre thème */
+
+.text-primary-theme {
+  color: var(--color-primary);
+}
+
+.text-secondary-theme {
+  color: var(--color-text-secondary);
+}
+
+/* --- Hauteur Minimale --- */
+/* Utile pour les conteneurs qui doivent avoir une taille minimale pendant le chargement */
+
+.min-h-100 {
+  min-height: 100px;
+}
+
+.min-h-200 {
+  min-height: 200px;
+}
+
+/* --- Style pour les Avatars --- */
+
+.avatar {
+  display: inline-block;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: var(--color-secondary);
+  color: #fff;
+  text-align: center;
+  line-height: 40px;
+  font-weight: bold;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-sm {
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+}
+
+.avatar-lg {
+  width: 64px;
+  height: 64px;
+  line-height: 64px;
+}
