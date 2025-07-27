@@ -1,85 +1,97 @@
 // ==============================================================================
 //                Composant En-tête (Header) de l'Application
 //
-// Cet en-tête s'affiche en haut de la zone de contenu principal.
-// Il contient des éléments contextuels comme :
-//   - Le titre de la page actuelle (ou un fil d'Ariane).
-//   - Une barre de recherche globale.
-//   - Un menu pour l'utilisateur connecté (profil, déconnexion).
+// Cet en-tête est maintenant entièrement interactif. Il est connecté aux
+// slices `auth` et `ui` de Redux pour gérer :
+//   - L'affichage des informations de l'utilisateur (`useAuth`).
+//   - La déconnexion (`logout` action).
+//   - Le basculement de la sidebar en mode responsive (`toggleSidebar` action).
 // ==============================================================================
 
 import React from 'react';
-import { Navbar, Container, Form, InputGroup, Nav, NavDropdown } from 'react-bootstrap';
-import { PersonCircle, BellFill, Search } from 'react-bootstrap-icons';
-// import { useLocation } from 'react-router-dom'; // Pour obtenir le titre de la page
+import { useDispatch } from 'react-redux';
+import { Navbar, Container, Form, InputGroup, Nav, NavDropdown, Button } from 'react-bootstrap';
+import { PersonCircle, BellFill, Search, List } from 'react-bootstrap-icons';
+
+// Importation de nos hooks et actions
+import { useAuth } from '../../hooks/useAuth';
+import { logout } from '../../store/slices/authSlice';
+import { toggleSidebar } from '../../store/slices/uiSlice'; // <-- 1. Importer l'action de l'UI slice
 
 const Header = () => {
-  // --- Logique pour obtenir le nom de l'utilisateur (à remplacer par Redux/Context) ---
-  // Pour l'instant, on utilise une valeur factice.
-  const user = {
-    fullName: 'libdev_prod',
-    role: 'Admin',
-  };
-
-  // --- Logique pour le titre de la page (optionnel) ---
-  // const location = useLocation();
-  // const getPageTitle = () => {
-  //   // Logique pour mapper pathname à un titre
-  //   return "Tableau de bord";
-  // };
+  const dispatch = useDispatch();
+  const { isAuthenticated, user } = useAuth();
 
   const handleLogout = () => {
-    // Logique de déconnexion à implémenter (appel Redux/service)
-    alert('Déconnexion...');
+    dispatch(logout());
+  };
+
+  /**
+   * Gère le clic sur le bouton "hamburger" pour ouvrir/fermer la sidebar.
+   */
+  const handleToggleSidebar = () => {
+    dispatch(toggleSidebar()); // <-- 2. Dispatcher l'action
   };
 
   return (
-    <Navbar bg="light" expand="lg" className="border-bottom sticky-top">
+    // La classe `header` vient de `components.css` pour appliquer les variables de thème
+    <Navbar as="header" className="header sticky-top">
       <Container fluid>
-        {/* On peut ajouter un bouton pour afficher/masquer la sidebar sur mobile ici */}
-        {/* <Navbar.Toggle aria-controls="sidebar-nav" /> */}
+        {/* Bouton "Hamburger" pour le responsive */}
+        <Button
+          variant="outline-secondary"
+          className="d-lg-none me-2" // Ne s'affiche que sur les écrans plus petits que 'lg'
+          onClick={handleToggleSidebar} // <-- 3. Lier l'événement
+          aria-label="Basculer la navigation"
+        >
+          <List size={24} />
+        </Button>
         
-        <Navbar.Brand href="#">
-          {/* Titre de la page, ex: getPageTitle() */}
-        </Navbar.Brand>
+        {/* Barre de recherche globale (optionnelle) */}
+        <div className="flex-grow-1">
+          <Form className="d-none d-md-flex" style={{ maxWidth: '400px' }}>
+            <InputGroup>
+              <InputGroup.Text>
+                <Search />
+              </InputGroup.Text>
+              <Form.Control type="search" placeholder="Recherche globale..." />
+            </InputGroup>
+          </Form>
+        </div>
 
-        {/* Barre de recherche (alignée à gauche après le titre) */}
-        <Form className="d-none d-md-flex ms-auto me-3" style={{ width: '400px' }}>
-          <InputGroup>
-            <InputGroup.Text>
-              <Search />
-            </InputGroup.Text>
-            <Form.Control type="search" placeholder="Recherche globale..." />
-          </InputGroup>
-        </Form>
-
-        {/* Icônes et menu utilisateur (alignés à droite) */}
-        <Nav className="ms-auto">
-          <Nav.Link href="#notifications" className="d-flex align-items-center">
-            <BellFill size={20} />
-            <span className="visually-hidden">Notifications</span>
-          </Nav.Link>
-          
-          <NavDropdown
-            title={
-              <div className="d-flex align-items-center">
-                <PersonCircle size={24} className="me-2" />
-                <div className="d-none d-lg-block">
-                  <div className="fw-bold">{user.fullName}</div>
-                  <small className="text-muted">{user.role}</small>
-                </div>
-              </div>
-            }
-            id="user-nav-dropdown"
-            align="end" // Aligne le menu déroulant à droite
-          >
-            <NavDropdown.Item href="#profile">Mon Profil</NavDropdown.Item>
-            <NavDropdown.Item href="#settings">Paramètres du compte</NavDropdown.Item>
-            <NavDropdown.Divider />
-            <NavDropdown.Item onClick={handleLogout} className="text-danger">
-              Déconnexion
-            </NavDropdown.Item>
-          </NavDropdown>
+        {/* Menu utilisateur aligné à droite */}
+        <Nav className="ms-auto align-items-center">
+          {isAuthenticated && user ? (
+            <>
+              <Nav.Link href="#notifications" className="d-flex align-items-center">
+                <BellFill size={20} />
+                <span className="visually-hidden">Notifications</span>
+              </Nav.Link>
+              
+              <NavDropdown
+                title={
+                  <div className="d-flex align-items-center">
+                    <PersonCircle size={24} className="me-2" />
+                    <div className="d-none d-lg-block text-start">
+                      <div className="fw-bold">{user.fullName}</div>
+                      <small className="text-muted">{user.role?.name || 'Utilisateur'}</small>
+                    </div>
+                  </div>
+                }
+                id="user-nav-dropdown"
+                align="end"
+              >
+                <NavDropdown.Item href="#profile">Mon Profil</NavDropdown.Item>
+                <NavDropdown.Item href="#settings">Paramètres du compte</NavDropdown.Item>
+                <NavDropdown.Divider />
+                <NavDropdown.Item onClick={handleLogout} className="text-danger">
+                  Déconnexion
+                </NavDropdown.Item>
+              </NavDropdown>
+            </>
+          ) : (
+            <Nav.Link href="/login">Se connecter</Nav.Link>
+          )}
         </Nav>
       </Container>
     </Navbar>

@@ -11,7 +11,7 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+import App from './App.jsx';
 
 // --- Importation des Fournisseurs de Contexte et de State ---
 import { Provider } from 'react-redux';
@@ -40,7 +40,7 @@ import './styles/components.css';
 import './styles/utilities.css';
 
 // 7. Styles globaux et reset (body, h1, a, etc.)
-import './index.css';
+//import './index.css';
 
 // 8. Styles spécifiques pour l'impression
 import './styles/print.css';

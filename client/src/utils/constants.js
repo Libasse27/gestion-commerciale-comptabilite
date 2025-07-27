@@ -1,27 +1,32 @@
 // ==============================================================================
 //                     CONSTANTES GLOBALES DE L'APPLICATION CLIENT
 //
-// Ce fichier centralise toutes les valeurs constantes utilisées dans l'application
-// frontend. L'utilisation de ce fichier permet de :
-//   - Éviter les chaînes de caractères "magiques" et les fautes de frappe.
-//   - Faciliter la maintenance et les mises à jour.
-//   - Avoir une source unique de vérité pour les valeurs critiques côté client.
+// ... (description inchangée)
 // ==============================================================================
 
 /**
+ * Rôles des utilisateurs.
+ * Doit être synchronisé avec les rôles définis dans `server/utils/constants.js`.
+ */
+export const USER_ROLES = Object.freeze({
+  ADMIN: 'Admin',
+  COMPTABLE: 'Comptable',
+  COMMERCIAL: 'Commercial',
+  VENDEUR: 'Vendeur',
+});
+
+/**
  * Clés utilisées pour le stockage local (localStorage).
- * Utiliser des constantes évite les fautes de frappe lors de l'accès au localStorage.
  */
 export const LOCAL_STORAGE_KEYS = Object.freeze({
   AUTH_TOKEN: 'erp_auth_token',
   REFRESH_TOKEN: 'erp_refresh_token',
   USER_INFO: 'erp_user_info',
-  UI_THEME: 'erp_ui_theme', // Pour le thème sombre/clair
+  UI_THEME: 'erp_ui_theme',
 });
 
 /**
  * Points de terminaison (endpoints) de l'API.
- * Centraliser les routes de l'API ici facilite leur mise à jour si le backend change.
  */
 export const API_ENDPOINTS = Object.freeze({
   // Authentification
@@ -37,16 +42,15 @@ export const API_ENDPOINTS = Object.freeze({
   PRODUITS: '/produits',
   FACTURES: '/factures',
   DEVIS: '/devis',
-  // ... ajouter les autres endpoints au fur et à mesure
 });
 
 /**
  * Constantes pour la configuration de l'interface utilisateur.
  */
 export const UI_SETTINGS = Object.freeze({
-  DEFAULT_DEBOUNCE_DELAY: 500, // en ms
-  ITEMS_PER_PAGE: 10, // Nombre d'éléments par page pour la pagination
-  TOAST_DEFAULT_DURATION: 3000, // Durée d'affichage des notifications (toasts)
+  DEFAULT_DEBOUNCE_DELAY: 500,
+  ITEMS_PER_PAGE: 10,
+  TOAST_DEFAULT_DURATION: 3000,
 });
 
 /**
@@ -60,12 +64,11 @@ export const TOAST_TYPES = Object.freeze({
 });
 
 /**
- * Noms des slices Redux, utiles pour éviter les fautes de frappe.
+ * Noms des slices Redux.
  */
 export const REDUX_SLICE_NAMES = Object.freeze({
   AUTH: 'auth',
   UI: 'ui',
   CLIENTS: 'clients',
   PRODUITS: 'produits',
-  // ... etc.
 });
