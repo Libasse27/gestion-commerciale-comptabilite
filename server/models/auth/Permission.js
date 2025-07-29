@@ -22,6 +22,7 @@ const permissionSchema = new mongoose.Schema(
     /**
      * Le nom unique de la permission, suivant une convention claire.
      * Convention recommandée : 'action:ressource' (ex: 'create:produit').
+     * L'option `unique: true` crée automatiquement un index unique sur ce champ.
      */
     name: {
       type: String,
@@ -52,10 +53,11 @@ const permissionSchema = new mongoose.Schema(
   }
 );
 
-/**
- * Index pour accélérer les recherches par nom de permission.
+/*
+ * La déclaration manuelle de l'index ci-dessous a été supprimée car l'option
+ * `unique: true` sur le champ 'name' s'en charge déjà.
  */
-permissionSchema.index({ name: 1 });
+// permissionSchema.index({ name: 1 });
 
 /**
  * Création du modèle 'Permission' à partir du schéma.

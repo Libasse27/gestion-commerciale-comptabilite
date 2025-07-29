@@ -24,7 +24,7 @@ import { Navigate, Outlet } from 'react-router-dom';
  * @param {object} props - Les propriétés du composant.
  * @param {string} [props.redirectTo='/dashboard'] - La page vers laquelle rediriger si l'utilisateur est déjà connecté.
  */
-const PublicRoute = ({ redirectTo = '/dashboard' }) => {
+const PublicRoute = ({ redirectTo = '/' }) => {
   // On lit l'état d'authentification depuis le store Redux.
   const { token } = useSelector((state) => state.auth);
 

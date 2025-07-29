@@ -1,103 +1,92 @@
 // ==============================================================================
 //           Middleware de Logging avec Winston
 //
-// Ce module configure Winston, un logger polyvalent et puissant. Il remplace
-// `console.log` pour les logs de l'application, offrant plus de contrôle sur
-// le format, les niveaux de log, et la destination des messages (console, fichiers).
-//
-// La configuration est optimisée pour :
-// - DÉVELOPPEMENT: Logs colorés et détaillés dans la console.
-// - PRODUCTION: Logs formatés en JSON écrits dans des fichiers rotatifs.
+// MISE À JOUR : Le `httpLogger` est amélioré pour inclure le statut de
+// la réponse et le temps d'exécution, le rendant aussi informatif que Morgan.
 // ==============================================================================
 
 const winston = require('winston');
 const path = require('path');
+const onFinished = require('on-finished'); // Pour logger après la fin de la réponse
 require('winston-daily-rotate-file');
 
-// --- Définition des niveaux de log standard ---
-const levels = {
-  error: 0,
-  warn: 1,
-  info: 2,
-  http: 3, // Pour les requêtes (remplace Morgan)
-  debug: 4,
-};
-
-// --- Définition des couleurs pour la console en développement ---
-const colors = {
-  error: 'red',
-  warn: 'yellow',
-  info: 'green',
-  http: 'magenta',
-  debug: 'white',
-};
+// --- Définition des niveaux et couleurs ---
+const levels = { error: 0, warn: 1, info: 2, http: 3, debug: 4 };
+const colors = { error: 'red', warn: 'yellow', info: 'green', http: 'magenta', debug: 'white' };
 winston.addColors(colors);
-
 
 // --- Format des logs ---
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
-  // En production, on privilégie le format JSON pour une analyse facile par des outils externes.
+  // On ajoute les métadonnées (comme l'objet error) au message de log
+  winston.format.metadata({ fillExcept: ['message', 'level', 'timestamp', 'label'] }),
+  // En production, format JSON
   process.env.NODE_ENV === 'production'
     ? winston.format.json()
-    : winston.format.printf(
-        (info) => `${info.timestamp} ${info.level}: ${info.message}`
+    // En développement, format texte coloré
+    : winston.format.combine(
+        winston.format.colorize({ all: true }),
+        winston.format.printf((info) => {
+          let log = `${info.timestamp} ${info.level}: ${info.message}`;
+          // Affiche les métadonnées si elles existent
+          if (Object.keys(info.metadata).length) {
+            log += ` ${JSON.stringify(info.metadata, null, 2)}`;
+          }
+          return log;
+        })
       )
 );
 
-// --- Définition des "Transports" (où les logs sont envoyés) ---
+// --- Définition des Transports ---
 const transports = [
-  // Toujours logger dans la console, mais avec un format différent selon l'environnement
-  new winston.transports.Console({
-    format: winston.format.combine(
-        winston.format.colorize({ all: true })
-    )
-  }),
+  // Toujours logger dans la console
+  new winston.transports.Console(),
 ];
-
-// En production, on ajoute les transports vers des fichiers
 if (process.env.NODE_ENV === 'production') {
   transports.push(
-    // Transport pour tous les logs de niveau 'info' et plus bas
     new winston.transports.DailyRotateFile({
       filename: path.join(__dirname, '..', 'logs', 'app-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      zippedArchive: true, // Compresse les anciens logs
-      maxSize: '20m',      // Taille maximale du fichier avant rotation
-      maxFiles: '14d',     // Garde les logs pendant 14 jours
-      level: 'info',
+      datePattern: 'YYYY-MM-DD', zippedArchive: true, maxSize: '20m', maxFiles: '14d', level: 'info',
     }),
-    // Transport séparé uniquement pour les logs d'erreurs
     new winston.transports.DailyRotateFile({
       filename: path.join(__dirname, '..', 'logs', 'error-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      zippedArchive: true,
-      maxSize: '20m',
-      maxFiles: '14d',
-      level: 'error',
+      datePattern: 'YYYY-MM-DD', zippedArchive: true, maxSize: '20m', maxFiles: '14d', level: 'error',
     })
   );
 }
 
-
-// --- Création et Exportation du Logger ---
+// --- Création du Logger ---
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
   levels,
   format: logFormat,
   transports,
-  // Ne pas quitter l'application en cas d'erreur non gérée
   exitOnError: false,
 });
 
 /**
- * Middleware pour remplacer Morgan et logger les requêtes HTTP avec Winston.
+ * Middleware amélioré pour logger les requêtes HTTP.
  */
 const httpLogger = (req, res, next) => {
-    // Message de log formaté
-    const message = `${req.method} ${req.url} - Status: ${res.statusCode} - IP: ${req.ip}`;
-    // Le niveau 'http' est utilisé pour ce type de log
-    logger.http(message);
+    const start = Date.now();
+    const { method, url, ip } = req;
+
+    // `onFinished` est un écouteur qui se déclenche juste avant que la réponse ne soit envoyée.
+    onFinished(res, (err, finalRes) => {
+        const ms = Date.now() - start;
+        const { statusCode } = finalRes;
+        const message = `${method} ${url} ${statusCode} - ${ms}ms - IP: ${ip}`;
+        
+        // On logue en `warn` ou `error` si le statut est >= 400
+        if (statusCode >= 500) {
+            logger.error(message);
+        } else if (statusCode >= 400) {
+            logger.warn(message);
+        } else {
+            logger.http(message);
+        }
+    });
+
     next();
 }
 

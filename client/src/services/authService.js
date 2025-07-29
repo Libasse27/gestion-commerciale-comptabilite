@@ -1,11 +1,8 @@
 // ==============================================================================
 //           Service pour les Appels API liés à l'Authentification
 //
-// Ce service encapsule toutes les interactions avec les points de terminaison
-// (endpoints) de l'API qui concernent l'authentification.
-//
-// Chaque fonction correspond à une route spécifique de l'API et utilise
-// `apiClient` (notre instance Axios pré-configurée) pour effectuer les requêtes.
+// MISE À JOUR : Ajout des fonctions pour le processus de réinitialisation
+// de mot de passe.
 // ==============================================================================
 
 import apiClient from './api';
@@ -13,10 +10,6 @@ import { API_ENDPOINTS, LOCAL_STORAGE_KEYS } from '../utils/constants';
 
 /**
  * Envoie une requête de connexion à l'API.
- * @param {object} credentials - Un objet contenant l'email et le mot de passe.
- * @param {string} credentials.email
- * @param {string} credentials.password
- * @returns {Promise<object>} La réponse de l'API contenant les tokens et les données utilisateur.
  */
 const login = async (credentials) => {
   const response = await apiClient.post(API_ENDPOINTS.LOGIN, credentials);
@@ -25,12 +18,6 @@ const login = async (credentials) => {
 
 /**
  * Envoie une requête d'inscription à l'API.
- * @param {object} userData - Un objet contenant les informations du nouvel utilisateur.
- * @param {string} userData.firstName
- * @param {string} userData.lastName
- * @param {string} userData.email
- * @param {string} userData.password
- * @returns {Promise<object>} La réponse de l'API contenant le nouvel utilisateur.
  */
 const register = async (userData) => {
   const response = await apiClient.post(API_ENDPOINTS.REGISTER, userData);
@@ -39,9 +26,6 @@ const register = async (userData) => {
 
 /**
  * Déconnecte l'utilisateur en supprimant les données du localStorage.
- * Pour une authentification JWT stateless, aucun appel API n'est nécessaire.
- * La logique de suppression effective se trouve dans le authMiddleware,
- * mais c'est une bonne pratique d'avoir la fonction ici.
  */
 const logout = () => {
   localStorage.removeItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN);
@@ -50,34 +34,27 @@ const logout = () => {
 };
 
 /**
- * Demande un nouveau token d'accès en utilisant le refresh token.
- * @returns {Promise<object>} La réponse contenant le nouvel accessToken.
+ * Envoie une requête pour demander un lien de réinitialisation de mot de passe.
+ * @param {string} email - L'email de l'utilisateur.
+ * @returns {Promise<object>}
  */
-const refreshToken = async () => {
-  const currentRefreshToken = localStorage.getItem(LOCAL_STORAGE_KEYS.REFRESH_TOKEN);
-  if (!currentRefreshToken) {
-    throw new Error('No refresh token available');
-  }
-  const response = await apiClient.post(API_ENDPOINTS.REFRESH_TOKEN, { token: currentRefreshToken });
-  
-  // Mettre à jour le nouveau token d'accès dans le localStorage
-  if (response.data && response.data.accessToken) {
-    localStorage.setItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN, response.data.accessToken);
-  }
-
+const requestPasswordReset = async (email) => {
+  const response = await apiClient.post(API_ENDPOINTS.REQUEST_PASSWORD_RESET, { email });
   return response.data;
 };
 
 /**
- * Récupère les informations de l'utilisateur actuellement connecté.
- * L'API doit avoir une route (ex: /users/me) qui utilise le token pour identifier l'utilisateur.
- * @returns {Promise<object>} Les données de l'utilisateur.
+ * Envoie le token et le nouveau mot de passe à l'API pour finaliser la réinitialisation.
+ * @param {string} token - Le token de réinitialisation reçu de l'URL.
+ * @param {string} password - Le nouveau mot de passe.
+ * @returns {Promise<object>}
  */
-const getMe = async () => {
-  // Le token est ajouté automatiquement par l'intercepteur d'apiClient
-  const response = await apiClient.get('/users/me'); // Endpoint à créer côté backend
+const resetPassword = async (token, password) => {
+  // Construit l'URL dynamique avec le token
+  const url = `/auth/reset-password/${token}`;
+  const response = await apiClient.patch(url, { password });
   return response.data;
-}
+};
 
 
 // On exporte un objet contenant toutes les fonctions du service
@@ -85,8 +62,10 @@ const authService = {
   login,
   register,
   logout,
-  refreshToken,
-  getMe,
+  requestPasswordReset,
+  resetPassword,
+  // refreshToken et getMe ont été retirés car leur logique est mieux gérée
+  // respectivement par l'intercepteur d'api.js et par un futur userService.
 };
 
 export default authService;

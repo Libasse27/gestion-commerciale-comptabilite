@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 10pt; color: #333; }
+    .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, .15); }
+    .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+    .header-left { max-width: 50%; }
+    .header-left h1 { color: #333; margin: 0; }
+    .header-right { text-align: right; }
+    .header-right img { max-width: 150px; }
+    .details { display: flex; justify-content: space-between; margin-bottom: 40px; }
+    .client-details { max-width: 50%; }
+    .invoice-details { text-align: right; }
+    .items-table { width: 100%; line-height: inherit; text-align: left; border-collapse: collapse; }
+    .items-table th { background: #eee; border-bottom: 1px solid #ddd; padding: 5px; }
+    .items-table td { padding: 8px; border-bottom: 1px solid #eee; }
+    .items-table .total td { border-top: 2px solid #aaa; font-weight: bold; }
+    .totals { display: flex; justify-content: flex-end; margin-top: 20px; }
+    .totals-table { width: 40%; }
+    .totals-table td { padding: 5px; }
+    .footer { text-align: center; color: #777; border-top: 1px solid #eee; padding-top: 10px; margin-top: 30px; font-size: 9pt; }
+  </style>
+</head>
+<body>
+  <div class="invoice-box">
+    <div class="header">
+      <div class="header-left">
+        <h1><%= entreprise.nom %></h1>
+        <p><%- entreprise.adresse.replace(/\n/g, '<br>') %></p>
+        <p>Tél: <%= entreprise.telephone %></p>
+      </div>
+      <div class="header-right">
+        <% if (entreprise.logoUrl) { %>
+          <img src="<%= entreprise.logoUrl %>" alt="Logo">
+        <% } %>
+      </div>
+    </div>
+    
+    <div class="details">
+      <div class="client-details">
+        <strong>Facturé à :</strong><br>
+        <%= client.nom %><br>
+        <%- client.adresse.replace(/\n/g, '<br>') %>
+      </div>
+      <div class="invoice-details">
+        <strong>Facture N° :</strong> <%= facture.numero %><br>
+        <strong>Date d'émission :</strong> <%= dateEmission %><br>
+        <strong>Date d'échéance :</strong> <%= dateEcheance %>
+      </div>
+    </div>
+    
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th>Qté</th>
+          <th>P.U. HT</th>
+          <th>Total HT</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% facture.lignes.forEach(ligne => { %>
+          <tr>
+            <td><%= ligne.description %></td>
+            <td><%= ligne.quantite %></td>
+            <td><%= formatCurrency(ligne.prixUnitaireHT) %></td>
+            <td><%= formatCurrency(ligne.totalHT) %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    
+    <div class="totals">
+        <table class="totals-table">
+            <tr><td>Total HT :</td><td style="text-align: right;"><%= formatCurrency(facture.totalHT) %></td></tr>
+            <tr><td>Total TVA :</td><td style="text-align: right;"><%= formatCurrency(facture.totalTVA) %></td></tr>
+            <tr class="total"><td>Total TTC :</td><td style="text-align: right;"><%= formatCurrency(facture.totalTTC) %></td></tr>
+        </table>
+    </div>
+
+    <div class="footer">
+      <%= entreprise.piedDePageFacture %>
+    </div>
+  </div>
+</body>
+</html>

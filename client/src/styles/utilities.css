@@ -9,76 +9,90 @@
 ============================================================================== */
 
 /* --- Curseurs --- */
-
 .cursor-pointer {
   cursor: pointer;
 }
-
 .cursor-not-allowed {
   cursor: not-allowed;
 }
-
 .cursor-help {
   cursor: help;
 }
 
-/* --- Taille de Police --- */
-/* Utile pour des ajustements fins que les classes `fs-*` de Bootstrap ne couvrent pas */
 
+/* --- Taille de Police --- */
 .font-sm {
   font-size: 0.875rem; /* 14px */
 }
-
 .font-xs {
   font-size: 0.75rem; /* 12px */
 }
 
-/* --- Transitions --- */
-/* Pour ajouter une animation de transition simple à un élément */
 
+/* --- Transitions --- */
 .transition-all {
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+  transition: all var(--transition-speed-fast) var(--transition-timing-function);
 }
 
-/* --- Ombres --- */
-/* Pour appliquer les ombres de votre thème via une classe */
 
+/* --- Ombres (basées sur le thème) --- */
 .shadow-sm {
   box-shadow: var(--shadow-sm);
 }
-
 .shadow-md {
   box-shadow: var(--shadow-md);
 }
 
-/* --- Couleurs de Texte basées sur le Thème --- */
-/* Pour colorer du texte avec les couleurs de votre thème */
 
+/* --- Couleurs de Texte (basées sur le thème) --- */
 .text-primary-theme {
   color: var(--color-primary);
 }
-
 .text-secondary-theme {
   color: var(--color-text-secondary);
 }
 
-/* --- Hauteur Minimale --- */
-/* Utile pour les conteneurs qui doivent avoir une taille minimale pendant le chargement */
 
+/* --- Couleurs de Fond "Light" (Nouveau) --- */
+/*
+  Utile pour les fonds d'icônes, les badges légers, etc.
+  Utilise les variables --bs-*-rgb définies dans bootstrap-custom.css
+  pour créer une couleur avec une transparence.
+*/
+.bg-primary-light {
+  background-color: rgba(var(--bs-primary-rgb), 0.1);
+}
+.bg-secondary-light {
+  background-color: rgba(var(--bs-secondary-rgb), 0.1);
+}
+.bg-success-light {
+  background-color: rgba(var(--bs-success-rgb), 0.1);
+}
+.bg-warning-light {
+  background-color: rgba(var(--bs-warning-rgb), 0.1);
+}
+.bg-danger-light {
+  background-color: rgba(var(--bs-danger-rgb), 0.1);
+}
+.bg-info-light {
+  background-color: rgba(var(--bs-info-rgb), 0.1);
+}
+
+
+/* --- Hauteur Minimale --- */
 .min-h-100 {
   min-height: 100px;
 }
-
 .min-h-200 {
   min-height: 200px;
 }
 
-/* --- Style pour les Avatars --- */
 
+/* --- Style pour les Avatars --- */
 .avatar {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
   width: 40px;
   height: 40px;
@@ -86,25 +100,28 @@
   overflow: hidden;
   background-color: var(--color-secondary);
   color: #fff;
-  text-align: center;
-  line-height: 40px;
   font-weight: bold;
 }
-
 .avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-
 .avatar-sm {
   width: 32px;
   height: 32px;
-  line-height: 32px;
 }
-
 .avatar-lg {
   width: 64px;
   height: 64px;
-  line-height: 64px;
+}
+
+
+/* --- Style pour les Cartes de Statistique (Nouveau) --- */
+.stat-card-icon {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

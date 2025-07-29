@@ -23,6 +23,7 @@ import { combineReducers } from '@reduxjs/toolkit';
 
 import authReducer from './slices/authSlice';
 import uiReducer from './slices/uiSlice';
+import dashboardReducer from './slices/dashboardSlice';
 // import clientsReducer from './slices/clientsSlice';
 // import produitsReducer from './slices/produitsSlice';
 // import facturesReducer from './slices/facturesSlice';
@@ -35,6 +36,7 @@ import uiReducer from './slices/uiSlice';
 const rootReducer = combineReducers({
   auth: authReducer,
   ui: uiReducer,
+  dashboard: dashboardReducer,
   // clients: clientsReducer,
   // produits: produitsReducer,
   // factures: facturesReducer,

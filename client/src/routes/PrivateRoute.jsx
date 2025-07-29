@@ -1,18 +1,13 @@
 // ==============================================================================
 //           Composant de Route Protégée (PrivateRoute)
 //
-// Ce composant est un "wrapper" autour des routes qui nécessitent une
-// authentification. Il agit comme un gardien.
-//
-// Il utilise notre hook personnalisé `useAuth` pour obtenir l'état
-// d'authentification, ce qui le découple de la structure interne de Redux.
-//
-// - Si l'utilisateur est authentifié, il rend le composant enfant via `<Outlet />`.
-// - Sinon, il le redirige vers la page de connexion.
+// MISE À JOUR : Utilise un état `status` ('idle', 'loading', 'succeeded') pour
+// prendre des décisions de rendu plus stables et éviter les boucles de
+// redirection infinies.
 // ==============================================================================
 
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
 // Importation du hook personnalisé
 import { useAuth } from '../hooks/useAuth';
@@ -28,26 +23,26 @@ import Loader from '../components/common/Loader';
  * @param {string} [props.redirectTo='/login'] - La page vers laquelle rediriger si l'utilisateur n'est pas connecté.
  */
 const PrivateRoute = ({ redirectTo = '/login' }) => {
-  // 1. Utiliser le hook `useAuth` pour obtenir l'état d'authentification.
-  // C'est plus propre et plus déclaratif que `useSelector`.
-  const { isAuthenticated, isLoading } = useAuth();
+  // 1. Utiliser le hook `useAuth` pour obtenir l'état d'authentification complet.
+  const { isAuthenticated, status } = useAuth();
+  const location = useLocation();
 
-  // 2. Afficher un loader pendant la vérification initiale de l'état.
-  // `isLoading` peut être `true` au démarrage de l'app si vous avez une
-  // logique asynchrone pour valider un token existant, par exemple.
-  if (isLoading) {
+  // 2. Pendant que le statut est indéterminé ('idle') ou en cours de chargement ('loading'),
+  // on affiche un loader. Cela empêche toute redirection prématurée.
+  if (status === 'idle' || status === 'loading') {
     return <Loader fullscreen text="Vérification de l'authentification..." />;
   }
 
-  // 3. Si l'utilisateur est authentifié, on affiche le contenu de la route.
-  // `<Outlet />` est le placeholder de react-router-dom pour le composant enfant.
+  // 3. Une fois le statut connu ('succeeded' ou 'failed'), on prend une décision.
+  // Si l'utilisateur est authentifié, on affiche le contenu de la route.
   if (isAuthenticated) {
     return <Outlet />;
   }
 
   // 4. Si l'utilisateur n'est pas authentifié, on le redirige.
-  // L'option `replace` est importante pour une meilleure UX (pas de "retour" possible vers la page protégée).
-  return <Navigate to={redirectTo} replace />;
+  // On passe `state={{ from: location }}` pour pouvoir rediriger l'utilisateur
+  // vers sa page d'origine après qu'il se soit connecté.
+  return <Navigate to={redirectTo} state={{ from: location }} replace />;
 };
 
 export default PrivateRoute;

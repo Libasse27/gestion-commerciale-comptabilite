@@ -17,8 +17,9 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Charge les variables d'environnement du fichier .env en fonction du mode (development, production)
-  const env = loadEnv(mode, '', '');
+  // Charge les variables d'environnement du fichier .env situé dans le
+  // répertoire de travail actuel (process.cwd()), qui est /client.
+  const env = loadEnv(mode, process.cwd(), '');
 
   return {
     // --- Plugins ---
@@ -33,27 +34,26 @@ export default defineConfig(({ mode }) => {
       
       // Configuration du Proxy
       // Toutes les requêtes du frontend qui commencent par '/api' seront
-      // redirigées vers le serveur backend qui tourne sur http://localhost:5000
+      // redirigées vers le serveur backend.
       proxy: {
         '/api': {
           target: env.VITE_PROXY_TARGET || 'http://localhost:5000',
           changeOrigin: true, // Nécessaire pour les hôtes virtuels
           secure: false,      // Ne pas vérifier les certificats SSL (utile pour le dev)
-          // Optionnel : vous pouvez réécrire le chemin si nécessaire
-          // rewrite: (path) => path.replace(/^\/api/, ''),
         },
       },
     },
 
     // --- Configuration du Processus de Build ---
     build: {
-      outDir: 'build', // Change le nom du dossier de sortie de 'dist' à 'build' (préférence personnelle)
+      outDir: 'build', // Change le nom du dossier de sortie de 'dist' à 'build'
       sourcemap: true, // Génère des sourcemaps pour le débogage en production
     },
     
     // --- Configuration du Serveur de Prévisualisation ---
+    // Permet de tester le build de production localement via `npm run preview`
     preview: {
-      port: 3001, // Port pour prévisualiser le build de production
+      port: 3001,
     }
   };
 });

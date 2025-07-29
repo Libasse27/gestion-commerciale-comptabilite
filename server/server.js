@@ -5,7 +5,7 @@
 // 1. Chargement des variables d'environnement.
 // 2. Connexion aux services externes (DB, Cache...).
 // 3. Création et démarrage du serveur HTTP.
-// 4. Initialisation de Socket.IO pour le temps réel.
+// 4. Initialisation de Socket.IO et des tâches planifiées (Cron Jobs).
 // 5. Gestion des arrêts propres (graceful shutdown) et des erreurs critiques.
 // ==============================================================================
 
@@ -16,7 +16,8 @@ const http = require('http');
 const app = require('./app'); // Importation de l'application Express configurée
 const { connectDB, disconnectDB } = require('./config/database');
 const { initSocket } = require('./config/socket');
-const { logger } = require('./middleware/logger'); // <-- Importation de notre logger Winston
+const { logger } = require('./middleware/logger');
+const { initializeCronJobs } = require('./jobs/cronJobs'); // Importation de l'initialiseur de cron
 
 /**
  * Gère les arrêts propres en cas d'erreurs critiques ou de signaux système.
@@ -31,7 +32,6 @@ function setupProcessEventListeners(serverInstance) {
 
   process.on('uncaughtException', (err) => {
     logger.error('EXCEPTION NON INTERCEPTÉE! 💥 Arrêt immédiat...', { error: err });
-    // Pour ce type d'erreur, il n'est pas sûr de continuer, donc on arrête brutalement.
     process.exit(1);
   });
 
@@ -56,9 +56,9 @@ async function startServer() {
 
     // --- SÉQUENCE DE DÉMARRAGE ---
     await connectDB(); // Étape 1: Connexion à la base de données
-    // TODO: Connecter le client Redis ici si nécessaire.
+    // Note: la connexion Redis est gérée dans son propre module config/redis.js
 
-    const server = http.createServer(app); // Étape 2: Création du serveur HTTP avec l'app Express
+    const server = http.createServer(app); // Étape 2: Création du serveur HTTP
 
     initSocket(server); // Étape 3: Initialisation de Socket.IO
 
@@ -73,6 +73,8 @@ async function startServer() {
     });
 
     setupProcessEventListeners(serverInstance); // Étape 5: Mise en place des écouteurs pour l'arrêt propre
+
+    initializeCronJobs(); // Étape 6: Initialisation des tâches planifiées
 
   } catch (error) {
     logger.error('❌ Échec critique lors de la séquence de démarrage du serveur.', { error });

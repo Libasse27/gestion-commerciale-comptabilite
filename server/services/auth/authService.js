@@ -1,21 +1,16 @@
 // ==============================================================================
 //                Service d'Authentification (Logique Métier)
 //
-// Ce service encapsule toute la logique métier liée à l'authentification des
-// utilisateurs. Il est responsable de :
-//   - L'inscription de nouveaux utilisateurs.
-//   - La connexion des utilisateurs (génération de tokens).
-//   - Le rafraîchissement des tokens d'accès.
-//   - La gestion du processus de réinitialisation de mot de passe.
+// ... (description inchangée)
 //
-// Il orchestre les appels aux modèles, aux services spécialisés (comme tokenService)
-// et aux utilitaires, tout en restant indépendant de la couche HTTP.
+// MISE À JOUR : La fonction de connexion peuple désormais les permissions
+// du rôle de l'utilisateur pour les rendre disponibles immédiatement côté client.
 // ==============================================================================
 
 const bcrypt = require('bcryptjs');
 const User = require('../../models/auth/User');
 const Role = require('../../models/auth/Role');
-const tokenService = require('./tokenService'); // Service pour les tokens de DB
+const tokenService = require('./tokenService');
 const { sendEmail } = require('../../config/email');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../../config/jwt');
 const { USER_ROLES } = require('../../utils/constants');
@@ -54,10 +49,6 @@ async function registerUser(userData) {
 
   await newUser.save();
 
-  // TODO: Envoyer un email de bienvenue ou de vérification d'email
-  // await tokenService.createToken(newUser._id, 'emailVerification', 1);
-  // ... envoyer l'email de vérification
-
   newUser.password = undefined;
   return newUser;
 }
@@ -70,7 +61,19 @@ async function registerUser(userData) {
  * @throws {Error} Si les identifiants sont incorrects ou si l'utilisateur est inactif.
  */
 async function loginUser(email, password) {
-  const user = await User.findOne({ email }).select('+password').populate('role');
+  // MISE À JOUR CLÉ ICI :
+  // On utilise .populate() deux fois. D'abord pour le rôle, puis pour les
+  // permissions à l'intérieur du rôle.
+  const user = await User.findOne({ email })
+    .select('+password')
+    .populate({
+      path: 'role',
+      populate: {
+        path: 'permissions',
+        select: 'name -_id', // Sélectionne uniquement le champ 'name' des permissions
+      },
+    });
+
   if (!user || !(await bcrypt.compare(password, user.password))) {
     throw new Error('Email ou mot de passe incorrect.');
   }
@@ -93,16 +96,15 @@ async function loginUser(email, password) {
  * @throws {Error} Si le refresh token est invalide.
  */
 async function refreshAuthToken(token) {
+  // ... (fonction inchangée)
   const decoded = verifyRefreshToken(token);
   if (!decoded) {
     throw new Error('Refresh token invalide ou expiré.');
   }
-
   const user = await User.findById(decoded.id);
   if (!user || !user.isActive) {
     throw new Error('Utilisateur introuvable ou compte désactivé.');
   }
-
   const accessToken = generateAccessToken(user._id);
   return { accessToken };
 }
@@ -112,19 +114,16 @@ async function refreshAuthToken(token) {
  * @param {string} email - L'email de l'utilisateur.
  */
 async function requestPasswordReset(email) {
+  // ... (fonction inchangée)
   const user = await User.findOne({ email });
   if (!user) {
-    // Sécurité : ne pas révéler si l'email existe. On termine silencieusement.
     return;
   }
-
   const resetToken = await tokenService.createToken(user._id, 'passwordReset', 1);
   const resetURL = `${process.env.APP_URL}/reset-password/${resetToken}`;
-
   await sendEmail({
     to: user.email,
     subject: 'Réinitialisation de votre mot de passe - ERP Sénégal',
-    // Idéalement, utiliser des templates HTML pour les emails.
     html: `<p>Bonjour ${user.firstName},</p><p>Pour réinitialiser votre mot de passe, veuillez cliquer sur ce <a href="${resetURL}">lien</a>. Le lien est valide pendant 24 heures.</p>`,
     text: `Bonjour ${user.firstName},\n\nPour réinitialiser votre mot de passe, veuillez copier ce lien dans votre navigateur : ${resetURL}\nLe lien est valide pendant 24 heures.`,
   });
@@ -137,27 +136,21 @@ async function requestPasswordReset(email) {
  * @throws {Error} Si le token est invalide ou le mot de passe trop faible.
  */
 async function finalizePasswordReset(token, newPassword) {
+  // ... (fonction inchangée)
   if (!isStrongPassword(newPassword)) {
     throw new Error('Le nouveau mot de passe ne respecte pas les critères de sécurité.');
   }
-
   const tokenDoc = await tokenService.validateToken(token, 'passwordReset');
   if (!tokenDoc) {
     throw new Error('Le token de réinitialisation est invalide ou a expiré.');
   }
-
   const user = await User.findById(tokenDoc.userId);
   if (!user) {
     throw new Error('Utilisateur associé au token introuvable.');
   }
-
-  user.password = newPassword; // Le hook pre-save du modèle hachera le mot de passe.
+  user.password = newPassword;
   await user.save();
-
-  // Le token est utilisé, on le supprime.
   await tokenService.deleteToken(token, 'passwordReset');
-
-  // TODO: Envoyer un email de confirmation de changement de mot de passe.
 }
 
 

@@ -20,6 +20,7 @@ const roleSchema = new mongoose.Schema(
      * Le nom unique du rôle.
      * Contraint par une énumération définie dans les constantes de l'application
      * pour garantir la cohérence.
+     * L'option `unique: true` crée automatiquement un index unique sur ce champ.
      */
     name: {
       type: String,
@@ -63,10 +64,11 @@ const roleSchema = new mongoose.Schema(
   }
 );
 
-/**
- * Index pour accélérer les recherches par nom de rôle.
+/*
+ * La déclaration manuelle de l'index ci-dessous a été supprimée car l'option
+ * `unique: true` sur le champ 'name' s'en charge déjà.
  */
-roleSchema.index({ name: 1 });
+// roleSchema.index({ name: 1 });
 
 /**
  * Création du modèle 'Role' à partir du schéma.

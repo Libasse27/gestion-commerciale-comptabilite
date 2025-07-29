@@ -18,6 +18,9 @@ import { Provider } from 'react-redux';
 import { store } from './store';
 // import { ThemeProvider } from './context/ThemeContext'; // Décommentez si vous utilisez le Contexte pour le thème
 
+// Dans main.jsx, avec les autres imports CSS
+import 'react-datepicker/dist/react-datepicker.css';
+
 // --- IMPORTATION DES FEUILLES DE STYLE GLOBALES ---
 // L'ordre est CRUCIAL pour que la cascade de styles fonctionne correctement.
 

@@ -1,65 +1,96 @@
 // ==============================================================================
-//           Définition Centrale des Routes de l'Application (Version Recommandée)
+//           Définition Centrale des Routes de l'Application (Version Optimisée)
 //
-// Cette version simplifie la logique en s'appuyant sur le comportement de
-// redirection de nos gardiens `PublicRoute` et `PrivateRoute`.
-//
-// - Les routes publiques (comme `/login`) sont inaccessibles aux utilisateurs connectés.
-// - Les routes privées (comme `/dashboard`) sont inaccessibles aux visiteurs.
-// - La racine `/` redirige simplement vers `/login`, laissant les gardiens
-//   décider de la destination finale.
+// La route racine (`/`) est maintenant gérée par le composant `Root` qui
+// s'occupe de l'aiguillage initial de l'utilisateur.
 // ==============================================================================
 
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 
-// --- Importation des Gardiens de Route ---
+// --- Importation des Gardiens et du Composant Racine ---
 import PrivateRoute from './PrivateRoute';
 import PublicRoute from './PublicRoute';
+import Root from './Root';
 
 // --- Importation des Layouts et Pages ---
 import Layout from '../components/common/Layout';
+
+// Pages Publiques
 import LoginPage from '../pages/auth/Login';
+import RegisterPage from '../pages/auth/Register';
+import ForgotPasswordPage from '../pages/auth/ForgotPassword';
+import ResetPasswordPage from '../pages/auth/ResetPassword';
+
+// Pages Protégées
 import DashboardPage from '../pages/dashboard/Dashboard';
 import ClientsListPage from '../pages/clients/ClientsList';
+// ... importez les futures pages ici
+
+// Page d'Erreur
 import NotFoundPage from '../pages/errors/NotFound';
-// ... importez vos autres pages ici ...
+
+// Composant "placeholder" pour les pages non encore créées
+const Placeholder = ({ title }) => <h2 className="text-muted mt-4">{title} - À construire</h2>;
+
 
 const AppRoutes = () => {
   return (
     <Routes>
       {/* --- Route Racine --- */}
-      {/* L'utilisateur arrivant à la racine est redirigé vers /login.
-          À partir de là, les gardiens de route prendront le relais. */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      {/* L'aiguilleur `Root` décide de rediriger vers /login ou /dashboard */}
+      <Route path="/" element={<Root />} />
 
       {/* --- Routes Publiques --- */}
-      {/* Enveloppées par PublicRoute, elles redirigeront vers /dashboard si l'utilisateur est déjà connecté. */}
-      <Route element={<PublicRoute redirectTo="/dashboard" />}>
+      {/* Accessibles uniquement si non connecté. */}
+      <Route element={<PublicRoute redirectTo="/" />}>
         <Route path="/login" element={<LoginPage />} />
-        {/* <Route path="/register" element={<RegisterPage />} /> */}
-        {/* <Route path="/forgot-password" element={<ForgotPasswordPage />} /> */}
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
       </Route>
 
       {/* --- Routes Protégées --- */}
-      {/* Enveloppées par PrivateRoute, elles redirigeront vers /login si l'utilisateur n'est pas connecté. */}
+      {/* Accessibles uniquement si connecté. */}
       <Route element={<PrivateRoute redirectTo="/login" />}>
-        {/* Toutes les routes à l'intérieur utiliseront le Layout principal */}
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/clients" element={<ClientsListPage />} />
-          {/* ... Ajoutez les autres routes protégées ici ... */}
           
-          {/*
-            Note : La route racine étant gérée à l'extérieur, il n'y a plus
-            besoin de `index` ici, sauf si vous voulez une page par défaut
-            pour une URL comme `/app/` par exemple.
-          */}
+          {/* Module Tiers */}
+          <Route path="/clients" element={<ClientsListPage />} />
+          <Route path="/fournisseurs" element={<Placeholder title="Fournisseurs" />} />
+          
+          {/* Module Catalogue */}
+          <Route path="/produits" element={<Placeholder title="Produits & Services" />} />
+          <Route path="/categories" element={<Placeholder title="Catégories" />} />
+          
+          {/* Module Ventes */}
+          <Route path="/devis" element={<Placeholder title="Devis" />} />
+          <Route path="/commandes" element={<Placeholder title="Commandes" />} />
+          <Route path="/livraisons" element={<Placeholder title="Bons de Livraison" />} />
+          <Route path="/factures" element={<Placeholder title="Factures" />} />
+          
+          {/* Module Stock */}
+          <Route path="/stock" element={<Placeholder title="État du Stock" />} />
+          <Route path="/stock/mouvements" element={<Placeholder title="Mouvements de Stock" />} />
+          
+          {/* Module Comptabilité */}
+          <Route path="/comptabilite/plan" element={<Placeholder title="Plan Comptable" />} />
+          <Route path="/comptabilite/ecritures" element={<Placeholder title="Écritures Comptables" />} />
+          
+          {/* Module Trésorerie */}
+          <Route path="/paiements" element={<Placeholder title="Paiements" />} />
+          
+          {/* Module Rapports */}
+          <Route path="/rapports" element={<Placeholder title="Rapports & Analyses" />} />
+
+          {/* Module Paramètres (pour l'admin) */}
+          <Route path="/parametres/utilisateurs" element={<Placeholder title="Gestion des Utilisateurs" />} />
+          <Route path="/parametres/roles" element={<Placeholder title="Gestion des Rôles" />} />
         </Route>
       </Route>
 
       {/* --- Route pour les pages non trouvées --- */}
-      {/* Cette route attrape toutes les autres URL non définies */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
