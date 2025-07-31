@@ -9,7 +9,7 @@
 
 /**
  * Arrondit un nombre à un nombre spécifié de décimales.
- * Gère les imprécisions de la virgule flottante.
+ * Gère les imprécisions de la virgule flottante en utilisant Number.EPSILON.
  * @param {number} num - Le nombre à arrondir.
  * @param {number} [decimals=2] - Le nombre de décimales souhaitées.
  * @returns {number} Le nombre arrondi.
@@ -19,6 +19,7 @@ const roundTo = (num, decimals = 2) => {
     return 0;
   }
   const shifter = Math.pow(10, decimals);
+  // L'ajout de Number.EPSILON corrige les erreurs d'arrondi sur des cas comme (1.005 * 100)
   return Math.round((num + Number.EPSILON) * shifter) / shifter;
 };
 
@@ -66,7 +67,8 @@ const calculateMargin = (sellingPrice, costPrice) => {
     return { marginValue: 0, marginRate: 0 };
   }
   const marginValue = sellingPrice - costPrice;
-  const marginRate = costPrice > 0 ? (marginValue / costPrice) * 100 : 0;
+  // Évite la division par zéro si le coût d'achat est nul
+  const marginRate = costPrice > 0 ? (marginValue / costPrice) * 100 : Infinity;
 
   return {
     marginValue: roundTo(marginValue, 2),
@@ -76,13 +78,14 @@ const calculateMargin = (sellingPrice, costPrice) => {
 
 /**
  * S'assure qu'une valeur est bien un nombre, sinon retourne une valeur par défaut.
+ * Très utile pour nettoyer les entrées utilisateur avant calcul.
  * @param {*} value - La valeur à vérifier.
- * @param {number} [defaultValue=0] - La valeur à retourner si l'entrée n'est pas un nombre.
+ * @param {number} [defaultValue=0] - La valeur à retourner si l'entrée n'est pas un nombre valide.
  * @returns {number}
  */
 const ensureNumber = (value, defaultValue = 0) => {
   const num = Number(value);
-  return isNaN(num) ? defaultValue : num;
+  return isNaN(num) || num === null ? defaultValue : num;
 };
 
 

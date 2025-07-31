@@ -1,78 +1,70 @@
 // ==============================================================================
 //                  Hook Personnalisé : useLocalStorage
 //
-// Ce hook se comporte comme `useState`, mais il synchronise automatiquement
-// l'état avec le `localStorage` du navigateur.
+// Ce hook se comporte comme `useState` mais synchronise la valeur avec le
+// localStorage du navigateur. Il est idéal pour persister des états simples
+// comme les préférences de l'utilisateur (ex: le thème UI).
 //
-// Avantages :
-//   - Persistance des données : l'état survit aux rechargements de la page.
-//   - Synchronisation entre les onglets : si la valeur change dans un onglet,
-//     les autres onglets utilisant le même hook peuvent se mettre à jour.
-//   - Simplification du code : abstrait la logique de lecture/écriture
-//     et de parsing JSON du localStorage.
+// Caractéristiques :
+//   - Persistance des données après rechargement de la page.
+//   - Initialisation "lazy" (via une fonction) pour les calculs coûteux.
+//   - Synchronisation automatique entre les onglets du navigateur.
 // ==============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
-/**
- * Un hook qui se comporte comme useState mais persiste l'état dans le localStorage.
- *
- * @param {string} key - La clé à utiliser dans le localStorage.
- * @param {*} initialValue - La valeur initiale à utiliser si rien n'est trouvé dans le localStorage.
- * @returns {[*, function]} Un tableau contenant la valeur de l'état et la fonction pour la mettre à jour.
- */
-function useLocalStorage(key, initialValue) {
-  // 1. Initialiser l'état en essayant de lire la valeur depuis le localStorage.
-  // La fonction passée à useState ne s'exécute qu'au premier rendu, ce qui est optimal.
+export function useLocalStorage(key, initialValue) {
+  // `useState` reçoit une fonction pour l'initialisation "lazy".
+  // Cette fonction ne s'exécute qu'une seule fois, au montage du composant.
   const [storedValue, setStoredValue] = useState(() => {
-    // Vérifier si le code s'exécute côté client (localStorage n'existe pas côté serveur pour le SSR)
+    // Ne pas exécuter côté serveur (pour SSR avec Next.js, etc.)
     if (typeof window === 'undefined') {
-      return initialValue;
+      return initialValue instanceof Function ? initialValue() : initialValue;
     }
 
     try {
       const item = window.localStorage.getItem(key);
-      // Parser le JSON stocké ou retourner la valeur initiale si rien n'est trouvé.
-      return item ? JSON.parse(item) : initialValue;
+      // Si une valeur existe déjà, on la parse, sinon on utilise la valeur initiale.
+      if (item) return JSON.parse(item);
+      
+      return initialValue instanceof Function ? initialValue() : initialValue;
     } catch (error) {
-      // En cas d'erreur de parsing, retourner la valeur initiale.
-      console.error(`Erreur lors de la lecture de la clé '${key}' depuis le localStorage`, error);
-      return initialValue;
+      console.error(`Erreur lors de la lecture de la clé '${key}' depuis localStorage`, error);
+      return initialValue instanceof Function ? initialValue() : initialValue;
     }
   });
 
-  // 2. Créer une version "wrapper" de la fonction `setValue` de `useState`.
-  // Cette nouvelle fonction mettra à jour à la fois l'état React ET le localStorage.
-  const setValue = (value) => {
+  // Wrapper `setValue` pour qu'elle se comporte comme celle de `useState`
+  // et mette à jour le localStorage. `useCallback` est utilisé pour la performance.
+  const setValue = useCallback((value) => {
     try {
-      // Permet à la nouvelle valeur d'être une fonction pour imiter le comportement de setState.
+      // Permet de passer une fonction pour mettre à jour l'état (ex: `setCount(c => c + 1)`)
       const valueToStore = value instanceof Function ? value(storedValue) : value;
-
-      // Mettre à jour l'état React
+      // Met à jour l'état React
       setStoredValue(valueToStore);
-
-      // Mettre à jour le localStorage
+      // Met à jour le localStorage
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(key, JSON.stringify(valueToStore));
       }
     } catch (error) {
-      console.error(`Erreur lors de la sauvegarde de la clé '${key}' dans le localStorage`, error);
+      console.error(`Erreur lors de la sauvegarde de la clé '${key}' dans localStorage`, error);
     }
-  };
+  }, [key, storedValue]);
 
-  // Optionnel : écouter les changements dans d'autres onglets
+  // Écoute les changements dans le localStorage depuis d'autres onglets
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === key) {
+      if (e.key === key && e.newValue !== e.oldValue) {
         try {
           setStoredValue(e.newValue ? JSON.parse(e.newValue) : initialValue);
         } catch (error) {
-          console.error('Erreur lors de la mise à jour depuis un autre onglet', error);
+          console.error(`Erreur lors de la mise à jour depuis l'événement storage pour la clé '${key}'`, error);
         }
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
+    // Nettoyage de l'écouteur d'événement au démontage du composant
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
@@ -81,5 +73,3 @@ function useLocalStorage(key, initialValue) {
 
   return [storedValue, setValue];
 }
-
-export default useLocalStorage;

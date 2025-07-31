@@ -24,7 +24,7 @@ let transporter;
 const initializeTransporter = async () => {
   if (process.env.NODE_ENV === 'production') {
     // --- Configuration pour la PRODUCTION ---
-    // Utilise un service d'email transactionnel (SendGrid, Mailgun, etc.)
+    // Utilise un service d'email transactionnel (SendGrid, Mailgun, Brevo, etc.)
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
       console.error('❌ Erreur: Les variables d\'environnement SMTP pour la production ne sont pas définies.');
       return; // Ne pas initialiser le transporter si la config est manquante
@@ -41,17 +41,22 @@ const initializeTransporter = async () => {
   } else {
     // --- Configuration pour le DÉVELOPPEMENT ---
     // Utilise un compte de test Ethereal
-    const testAccount = await nodemailer.createTestAccount();
-    transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
-    console.log('📬 Transporteur d\'emails (mode DEV) initialisé. Emails visibles sur Ethereal.');
+    try {
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user, // Identifiant généré
+          pass: testAccount.pass, // Mot de passe généré
+        },
+      });
+      console.log('📬 Transporteur d\'emails (mode DEV) initialisé. Emails visibles sur Ethereal.');
+    } catch (error) {
+      console.error('❌ Erreur lors de la création du compte de test Ethereal:', error);
+      return;
+    }
   }
 
   // Vérifier la connexion au serveur SMTP (optionnel mais recommandé)
@@ -75,7 +80,8 @@ const initializeTransporter = async () => {
 const sendEmail = async (options) => {
   if (!transporter) {
     console.error("Le transporteur d'emails n'est pas initialisé. L'email n'a pas été envoyé.");
-    return;
+    // Dans un cas réel, on pourrait vouloir retourner une erreur plus explicite
+    throw new Error("Email service not available.");
   }
 
   const mailOptions = {
@@ -97,10 +103,14 @@ const sendEmail = async (options) => {
     }
   } catch (error) {
     console.error("Erreur lors de l'envoi de l'email:", error);
+    // Propager l'erreur pour que le code appelant puisse la gérer
+    throw error;
   }
 };
 
 // Initialiser le transporteur au démarrage de l'application
+// L'appel est asynchrone mais on ne le "await" pas ici pour ne pas bloquer
+// le démarrage du serveur.
 initializeTransporter();
 
 module.exports = {

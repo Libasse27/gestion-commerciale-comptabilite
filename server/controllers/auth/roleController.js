@@ -9,13 +9,14 @@
 
 const permissionService = require('../../services/auth/permissionService');
 const Role = require('../../models/auth/Role');
+const Permission = require('../../models/auth/Permission');
 const AppError = require('../../utils/appError');
 const asyncHandler = require('../../utils/asyncHandler');
 
 /**
  * @desc    Créer un nouveau rôle
  * @route   POST /api/v1/roles
- * @access  Privé/Admin
+ * @access  Privé (permission: 'role:create')
  */
 exports.createRole = asyncHandler(async (req, res, next) => {
   const { name, description, permissions } = req.body;
@@ -37,14 +38,14 @@ exports.createRole = asyncHandler(async (req, res, next) => {
 
 
 /**
- * @desc    Récupérer tous les rôles
+ * @desc    Récupérer tous les rôles avec leurs permissions
  * @route   GET /api/v1/roles
- * @access  Privé/Admin
+ * @access  Privé (permission: 'role:read')
  */
 exports.getAllRoles = asyncHandler(async (req, res, next) => {
-  // Pour une simple lecture, on peut appeler le modèle directement,
-  // mais idéalement, cela passerait aussi par un service.
-  const roles = await Role.find().populate('permissions', 'name description');
+  // Pour une simple lecture, appeler le modèle directement est acceptable.
+  // Pour des logiques plus complexes, on passerait par un service.
+  const roles = await Role.find().populate('permissions', 'name description group').sort('name');
 
   res.status(200).json({
     status: 'success',
@@ -59,10 +60,10 @@ exports.getAllRoles = asyncHandler(async (req, res, next) => {
 /**
  * @desc    Récupérer un rôle par son ID
  * @route   GET /api/v1/roles/:id
- * @access  Privé/Admin
+ * @access  Privé (permission: 'role:read')
  */
 exports.getRoleById = asyncHandler(async (req, res, next) => {
-  const role = await Role.findById(req.params.id).populate('permissions', 'name description');
+  const role = await Role.findById(req.params.id).populate('permissions', 'name description group');
 
   if (!role) {
     return next(new AppError('Aucun rôle trouvé avec cet identifiant.', 404));
@@ -80,14 +81,11 @@ exports.getRoleById = asyncHandler(async (req, res, next) => {
 /**
  * @desc    Mettre à jour un rôle (description et/ou permissions)
  * @route   PATCH /api/v1/roles/:id
- * @access  Privé/Admin
+ * @access  Privé (permission: 'role:update')
  */
 exports.updateRole = asyncHandler(async (req, res, next) => {
-  // On ne permet pas de changer le nom du rôle pour des raisons de cohérence.
+  // On ne permet pas de changer le nom du rôle pour des raisons de cohérence système.
   const { description, permissions } = req.body;
-  
-  // TODO: Idéalement, créer une fonction `updateRole` dans le permissionService
-  // pour encapsuler cette logique.
   
   const role = await Role.findById(req.params.id);
   if (!role) {
@@ -98,16 +96,23 @@ exports.updateRole = asyncHandler(async (req, res, next) => {
     role.description = description;
   }
   
+  // Si un tableau de permissions est fourni, on le met à jour.
   if (permissions && Array.isArray(permissions)) {
-      // Logique pour mettre à jour les permissions (à placer dans le service)
-      const foundPermissions = await permissionService.Permission.find({ name: { $in: permissions } });
+      const foundPermissions = await Permission.find({ name: { $in: permissions } });
+      
+      if (foundPermissions.length !== permissions.length) {
+        return next(new AppError('Une ou plusieurs des permissions spécifiées sont invalides.', 400));
+      }
+
       role.permissions = foundPermissions.map(p => p._id);
+      // Invalider le cache car les permissions ont changé.
       await permissionService.invalidateRolePermissionsCache(role._id);
   }
 
-  await role.save();
+  await role.save({ validateBeforeSave: true });
   
-  const updatedRole = await Role.findById(req.params.id).populate('permissions', 'name description');
+  // Re-populer pour renvoyer le document mis à jour complet.
+  const updatedRole = await Role.findById(req.params.id).populate('permissions', 'name description group');
 
   res.status(200).json({
     status: 'success',
@@ -121,18 +126,19 @@ exports.updateRole = asyncHandler(async (req, res, next) => {
 /**
  * @desc    Supprimer un rôle
  * @route   DELETE /api/v1/roles/:id
- * @access  Privé/Admin
+ * @access  Privé (permission: 'role:delete')
  */
 exports.deleteRole = asyncHandler(async (req, res, next) => {
-  // TODO: La logique métier de suppression (vérifier si le rôle est utilisé)
-  // devrait être dans le `permissionService`.
+  // TODO: Idéalement, la logique de suppression devrait être dans un service
+  // qui vérifierait d'abord si le rôle est actuellement utilisé par des utilisateurs.
+  
   const role = await Role.findByIdAndDelete(req.params.id);
 
   if (!role) {
     return next(new AppError('Aucun rôle trouvé avec cet identifiant.', 404));
   }
   
-  // Invalider le cache pour ce rôle
+  // Invalider le cache pour ce rôle.
   await permissionService.invalidateRolePermissionsCache(req.params.id);
 
   res.status(204).json({

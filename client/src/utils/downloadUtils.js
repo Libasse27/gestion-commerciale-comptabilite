@@ -41,7 +41,7 @@ function triggerDownload(filename, blob) {
  * @param {string} [mimeType='text/csv;charset=utf-8;'] - Le type MIME du contenu.
  */
 export const downloadTextFile = (filename, content, mimeType = 'text/csv;charset=utf-8;') => {
-  // Ajoute le BOM (Byte Order Mark) pour une meilleure compatibilité avec Excel
+  // Ajoute le BOM (Byte Order Mark) pour une meilleure compatibilité des CSV avec Excel
   const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
   const blob = new Blob([bom, content], { type: mimeType });
   triggerDownload(filename, blob);
@@ -58,10 +58,10 @@ export const downloadBlob = (filename, blob) => {
 };
 
 /**
- * Crée un contenu CSV simple à partir d'un tableau de données et d'en-têtes.
- * @param {Array<string>} headers - Les en-têtes de colonnes.
- * @param {Array<object>} data - Le tableau d'objets.
- * @param {Array<string>} accessors - Les clés pour accéder aux données dans les objets.
+ * Crée un contenu CSV simple à partir d'un tableau de données, d'en-têtes et d'accesseurs.
+ * @param {Array<string>} headers - Les en-têtes de colonnes (ex: ['ID', 'Nom du Client']).
+ * @param {Array<object>} data - Le tableau d'objets (ex: [{ id: 1, name: 'Client A' }]).
+ * @param {Array<string>} accessors - Les clés pour accéder aux données dans les objets (ex: ['id', 'name']).
  * @returns {string} Le contenu CSV sous forme de chaîne de caractères.
  */
 export const createCsvContent = (headers, data, accessors) => {
@@ -69,12 +69,17 @@ export const createCsvContent = (headers, data, accessors) => {
     const dataRows = data.map(row => {
         return accessors.map(key => {
             let value = row[key];
+            if (value === null || value === undefined) {
+                value = '';
+            }
             if (typeof value === 'string') {
-                // Échapper les guillemets et entourer de guillemets si la valeur contient une virgule
-                value = value.replace(/"/g, '""');
-                if (value.includes(',')) {
-                    value = `"${value}"`;
+                // Échapper les guillemets en les doublant
+                const escapedValue = value.replace(/"/g, '""');
+                // Entourer de guillemets si la valeur contient une virgule, un saut de ligne ou des guillemets
+                if (escapedValue.includes(',') || escapedValue.includes('\n') || escapedValue.includes('"')) {
+                    return `"${escapedValue}"`;
                 }
+                return escapedValue;
             }
             return value;
         }).join(',');

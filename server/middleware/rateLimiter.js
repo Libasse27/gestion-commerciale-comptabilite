@@ -29,7 +29,7 @@ const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // Fenêtre de 15 minutes
   max: 200, // Limite chaque IP à 200 requêtes par fenêtre de 15 minutes
   message: {
-    status: 'error',
+    status: 'fail',
     message: 'Trop de requêtes envoyées depuis cette IP, veuillez réessayer après 15 minutes.',
   },
 });
@@ -43,8 +43,8 @@ const authLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // Fenêtre de 10 minutes
   max: 10, // Limite chaque IP à 10 tentatives de connexion / réinitialisation par fenêtre
   message: {
-    status: 'error',
-    message: 'Trop de tentatives d\'authentification. Veuillez réessayer plus tard.',
+    status: 'fail',
+    message: "Trop de tentatives d'authentification. Pour des raisons de sécurité, veuillez réessayer plus tard.",
   },
   skipSuccessfulRequests: true, // Ne pas compter les requêtes réussies (ex: login réussi) dans la limite
 });
@@ -52,15 +52,15 @@ const authLimiter = rateLimit({
 
 /**
  * Limiteur très strict pour les opérations sensibles ou coûteuses.
- * Ex: génération de rapports complexes.
+ * Ex: génération de rapports complexes, exports de masse.
  */
 const sensitiveOperationLimiter = rateLimit({
     ...commonOptions,
     windowMs: 60 * 60 * 1000, // Fenêtre de 1 heure
     max: 5, // Limite à 5 opérations par heure
     message: {
-        status: 'error',
-        message: 'Vous avez atteint la limite pour cette opération. Veuillez réessayer plus tard.'
+        status: 'fail',
+        message: 'Vous avez atteint la limite pour cette opération. Veuillez réessayer dans une heure.'
     }
 });
 

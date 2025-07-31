@@ -14,100 +14,117 @@
 
 /* --- Thème Clair (Défaut) --- */
 :root {
-  /* -- Couleurs de base -- */
-  --color-background: #ffffff; /* Fond principal */
-  --color-text-primary: #212529; /* Texte principal */
-  --color-text-secondary: #6c757d; /* Texte plus discret */
-  --color-border: #dee2e6; /* Bordures des cartes, inputs, etc. */
+  /* -- Palette de couleurs sémantiques -- */
+  --theme-bg-primary: #ffffff;      /* Fond principal de la page */
+  --theme-bg-secondary: #f8f9fa;   /* Fond pour les sections, cartes... */
+  --theme-bg-hover: #f1f5f9;       /* Couleur de fond au survol */
   
-  /* -- Couleurs de l'interface -- */
-  --color-surface: #ffffff; /* Fond des éléments surélevés (cartes, modales) */
-  --color-surface-hover: #f8f9fa; /* Fond au survol */
-  --color-primary: var(--bs-primary); /* Réutilise la variable primaire de Bootstrap */
-  --color-secondary: var(--bs-secondary);
-  
-  /* -- Couleurs sémantiques -- */
-  --color-success: var(--bs-success);
-  --color-danger: var(--bs-danger);
-  --color-warning: var(--bs-warning);
-  --color-info: var(--bs-info);
-  
-  /* -- Ombres -- */
-  --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-  --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  --theme-text-primary: #212529;    /* Texte principal */
+  --theme-text-secondary: #6c757d;  /* Texte plus discret, placeholders */
+  --theme-text-muted: #adb5bd;      /* Texte encore plus discret */
+
+  --theme-border-primary: #dee2e6;  /* Bordures principales (cartes, inputs) */
+  --theme-border-secondary: #e9ecef; /* Bordures plus subtiles */
+
+  --theme-primary: var(--bs-primary); /* Réutilise la variable primaire de Bootstrap */
+  --theme-shadow: rgba(0, 0, 0, 0.075);
 }
 
 
 /* --- Thème Sombre --- */
 [data-theme="dark"] {
-  /* -- Couleurs de base -- */
-  --color-background: #1a202c; /* Fond principal (bleu très sombre) */
-  --color-text-primary: #e2e8f0; /* Texte principal (gris clair) */
-  --color-text-secondary: #a0aec0; /* Texte secondaire (gris) */
-  --color-border: #4a5568; /* Bordures (gris foncé) */
+  /* -- Palette de couleurs sémantiques -- */
+  --theme-bg-primary: #0f172a;       /* Fond principal (bleu nuit) */
+  --theme-bg-secondary: #1e293b;    /* Fond des cartes, sidebar... (bleu-gris) */
+  --theme-bg-hover: #334155;        /* Couleur de fond au survol */
 
-  /* -- Couleurs de l'interface -- */
-  --color-surface: #2d3748; /* Fond des cartes (bleu-gris sombre) */
-  --color-surface-hover: #4a5568; /* Fond au survol */
+  --theme-text-primary: #f1f2f5;     /* Texte principal (gris clair) */
+  --theme-text-secondary: #f3f5f8;   /* Texte secondaire (gris) */
+  --theme-text-muted: #f3f6fa;       /* Texte encore plus discret */
 
-  /* On peut vouloir des couleurs primaires/sémantiques plus vives sur fond sombre */
-  --color-primary: #4299e1; /* Bleu plus vif */
-  --color-secondary: #a0aec0;
-  --color-success: #48bb78;
-  --color-danger: #f56565;
-  --color-warning: #ecc94b;
-  --color-info: #4299e1;
+  --theme-border-primary: #334155;   /* Bordures principales */
+  --theme-border-secondary: #475569;  /* Bordures plus subtiles */
 
-  /* -- Ombres -- */
-  /* Les ombres doivent être plus subtiles en thème sombre */
-  --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.3);
+  /* On peut vouloir des couleurs primaires plus vives sur fond sombre */
+  --theme-primary: #60a5fa; /* Bleu plus lumineux */
+  --theme-shadow: rgba(0, 0, 0, 0.25);
 }
 
 
-/* --- Application des variables --- */
-/*
-  Maintenant, nous lions ces variables aux composants de notre application.
-  Cela permet de ne changer que les variables ci-dessus pour thémer l'application.
-*/
+/* ==============================================================================
+            APPLICATION DES VARIABLES DE THÈME
+   
+   Ici, nous lions ces variables aux composants de notre application.
+   Cela permet de ne modifier que les variables ci-dessus pour thémer
+   l'ensemble de l'application de manière cohérente.
+============================================================================== */
 
 body {
-  background-color: var(--color-background);
-  color: var(--color-text-primary);
-  transition: background-color 0.2s, color 0.2s;
+  background-color: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
-/* Exemple pour les cartes */
-.card {
-  background-color: var(--color-surface);
-  border-color: var(--color-border);
-  box-shadow: var(--shadow-sm);
-}
+/* --- Composants de Layout --- */
 
-/* Exemple pour les inputs de formulaire */
-.form-control {
-  background-color: var(--color-background);
-  color: var(--color-text-primary);
-  border-color: var(--color-border);
-}
-
-.form-control:focus {
-  background-color: var(--color-background);
-  color: var(--color-text-primary);
-  border-color: var(--color-primary);
-}
-
-/* Pour le placeholder */
-.form-control::placeholder {
-  color: var(--color-text-secondary);
-}
-
-/* Assurez-vous que la sidebar et le header utilisent aussi ces variables */
-.sidebar {
-    background-color: var(--color-surface); /* Ou une couleur spécifique pour la sidebar */
-}
-
+.sidebar,
 .header {
-    background-color: var(--color-surface);
-    border-bottom-color: var(--color-border);
+  background-color: var(--theme-bg-secondary);
+  border-color: var(--theme-border-primary) !important;
+}
+
+/* --- Éléments d'interface --- */
+
+.card {
+  background-color: var(--theme-bg-secondary);
+  border-color: var(--theme-border-primary);
+  box-shadow: 0 0.125rem 0.25rem var(--theme-shadow);
+}
+
+.modal-content {
+    background-color: var(--theme-bg-secondary);
+    border-color: var(--theme-border-primary);
+}
+
+.table {
+    --bs-table-bg: var(--theme-bg-secondary);
+    --bs-table-border-color: var(--theme-border-primary);
+    --bs-table-color: var(--theme-text-primary);
+    --bs-table-striped-bg: var(--theme-bg-hover);
+    --bs-table-hover-bg: var(--theme-bg-hover);
+}
+
+.dropdown-menu {
+    --bs-dropdown-bg: var(--theme-bg-secondary);
+    --bs-dropdown-border-color: var(--theme-border-primary);
+    --bs-dropdown-link-color: var(--theme-text-primary);
+    --bs-dropdown-link-hover-bg: var(--theme-bg-hover);
+}
+
+/* --- Formulaires --- */
+
+.form-control,
+.form-select {
+  background-color: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  border-color: var(--theme-border-primary);
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  border-color: var(--theme-primary);
+  box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.form-control::placeholder {
+  color: var(--theme-text-secondary);
+  opacity: 1;
+}
+
+.input-group-text {
+    background-color: var(--theme-bg-secondary);
+    border-color: var(--theme-border-primary);
+    color: var(--theme-text-secondary);
 }

@@ -1,52 +1,54 @@
 // ==============================================================================
 //                Page de Connexion de l'Application
 //
-// MISE À JOUR : Ajout d'icônes dans les champs et d'un bouton pour
-// afficher/masquer le mot de passe pour une meilleure expérience utilisateur.
+// Component React pour la page de connexion. Gère l'état du formulaire,
+// la soumission via Redux, et l'affichage des retours (erreurs, chargement).
 // ==============================================================================
 
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { Container, Card, Form, Button, InputGroup } from 'react-bootstrap';
-import { toast } from 'react-toastify';
-import { EnvelopeFill, LockFill, EyeFill, EyeSlashFill } from 'react-bootstrap-icons'; // Import des icônes
+import { useDispatch, useSelector } from 'react-redux';
+import { Card, Form, Button, InputGroup, Image } from 'react-bootstrap';
+import { EnvelopeFill, LockFill, EyeFill, EyeSlashFill } from 'react-bootstrap-icons';
 
-// Importation de nos hooks et actions
+// Importation de nos hooks et actions Redux
 import { useAuth } from '../../hooks/useAuth';
-import { login, reset } from '../../store/slices/authSlice';
+import { loginUser, reset } from '../../store/slices/authSlice';
+import { useNotification } from '../../context/NotificationContext';
+import { TOAST_TYPES } from '../../utils/constants';
 
 // Importation des composants UI
 import Loader from '../../components/common/Loader';
+import logo from '../../assets/images/logo.webp'; // Assurez-vous d'avoir un logo ici
 
 const LoginPage = () => {
+  // --- État du composant ---
   const [formData, setFormData] = useState({ email: '', password: '' });
-  const { email, password } = formData;
-  
-  // Nouvel état pour gérer la visibilité du mot de passe
   const [showPassword, setShowPassword] = useState(false);
+  const { email, password } = formData;
 
+  // --- Hooks React & Redux ---
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { addNotification } = useNotification();
+  
+  // Le hook `useAuth` fournit l'état de l'authentification depuis Redux
   const { user, isLoading, isError, isSuccess, message } = useAuth();
 
-  // Correction de la boucle de rendu en séparant les useEffect
+  // --- Effets de bord (Side Effects) ---
   useEffect(() => {
+    // Gère la redirection ou l'affichage d'erreurs après une tentative de connexion
     if (isError) {
-      toast.error(message || 'Une erreur est survenue.');
+      addNotification(message || 'Une erreur est survenue.', TOAST_TYPES.ERROR);
+      dispatch(reset()); // Réinitialise l'état d'erreur
     }
     if (isSuccess || user) {
+      addNotification('Connexion réussie !', TOAST_TYPES.SUCCESS);
       navigate('/dashboard', { replace: true });
     }
-  }, [user, isError, isSuccess, message, navigate]);
+  }, [user, isError, isSuccess, message, navigate, dispatch, addNotification]);
 
-  useEffect(() => {
-    // Nettoie les états d'erreur/succès quand on quitte la page
-    return () => {
-      dispatch(reset());
-    };
-  }, [dispatch]);
-
+  // --- Gestionnaires d'événements ---
   const handleChange = (e) => {
     setFormData((prevState) => ({
       ...prevState,
@@ -57,82 +59,79 @@ const LoginPage = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!email || !password) {
-      toast.warn('Veuillez remplir tous les champs.');
+      addNotification('Veuillez remplir tous les champs.', TOAST_TYPES.WARNING);
     } else {
-      dispatch(login({ email, password }));
+      dispatch(loginUser({ email, password }));
     }
   };
-  
+
   return (
-    <div className="d-flex align-items-center justify-content-center min-vh-100" style={{ backgroundColor: 'var(--bs-light)' }}>
-      <Card style={{ width: '400px' }} className="p-3 shadow-lg border-0">
-        <Card.Body>
+    <div className="d-flex align-items-center justify-content-center min-vh-100 bg-light">
+      <Card style={{ width: '400px' }} className="shadow-lg">
+        <Card.Body className="p-4 p-sm-5">
+          {/* Section Logo */}
           <div className="text-center mb-4">
-            <h2 className="fw-bold mb-3">
+            <Image src={logo} alt="Logo ERP Sénégal" width={80} className="mb-3" />
+            <h2 className="fw-bold mb-2">
               {import.meta.env.VITE_APP_NAME || 'ERP Sénégal'}
             </h2>
             <p className="text-muted">Connectez-vous à votre espace</p>
           </div>
 
           <Form onSubmit={handleSubmit} noValidate>
-            {/* Champ Email avec icône */}
+            {/* Champ Email */}
             <Form.Group className="mb-3" controlId="email">
               <Form.Label>Adresse Email</Form.Label>
               <InputGroup>
                 <InputGroup.Text><EnvelopeFill /></InputGroup.Text>
                 <Form.Control
-                  type="email"
-                  name="email"
-                  value={email}
-                  onChange={handleChange}
-                  placeholder="exemple@email.com"
-                  required
-                  autoFocus
-                  disabled={isLoading}
+                  type="email" name="email" value={email} onChange={handleChange}
+                  placeholder="exemple@domaine.com"
+                  required autoFocus disabled={isLoading}
                 />
               </InputGroup>
             </Form.Group>
 
-            {/* Champ Mot de passe avec icône et bouton pour afficher/cacher */}
+            {/* Champ Mot de passe */}
             <Form.Group className="mb-4" controlId="password">
               <Form.Label>Mot de passe</Form.Label>
               <InputGroup>
                 <InputGroup.Text><LockFill /></InputGroup.Text>
                 <Form.Control
                   type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={password}
-                  onChange={handleChange}
+                  name="password" value={password} onChange={handleChange}
                   placeholder="Votre mot de passe"
-                  required
-                  disabled={isLoading}
+                  required disabled={isLoading}
                 />
                 <Button 
-                  variant="outline-secondary" 
+                  variant="outline-secondary"
                   onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Cacher le mot de passe" : "Afficher le mot de passe"}
+                  aria-label={showPassword ? "Cacher" : "Afficher"}
+                  disabled={isLoading}
                 >
                   {showPassword ? <EyeSlashFill /> : <EyeFill />}
                 </Button>
               </InputGroup>
             </Form.Group>
 
+            {/* Bouton de Connexion */}
             <div className="d-grid">
               <Button variant="primary" type="submit" disabled={isLoading} size="lg">
-                {isLoading ? (
-                  <Loader size="sm" showText={true} text="Connexion..." variant="light" />
-                ) : (
-                  'Se Connecter'
-                )}
+                {isLoading ? <Loader size="sm" /> : 'Se Connecter'}
               </Button>
             </div>
           </Form>
 
+          {/* Liens annexes */}
           <div className="mt-4 text-center">
             <small>
-              <Link to="/register" className="me-3">Créer un compte</Link>
-              |
-              <Link to="/forgot-password" className="ms-3">Mot de passe oublié ?</Link>
+              <Link to="/forgot-password">Mot de passe oublié ?</Link>
+            </small>
+          </div>
+          <hr className="my-3" />
+          <div className="text-center">
+            <small className="text-muted">
+              Pas encore de compte ? <Link to="/register">Inscrivez-vous</Link>
             </small>
           </div>
         </Card.Body>

@@ -77,7 +77,7 @@ const getDifferenceInDays = (dateLeft, dateRight) => {
 * @returns {boolean} `true` si la date d'échéance est dépassée.
 */
 const isOverdue = (dueDate) => {
-  // Une facture est en retard si la date d'échéance est avant aujourd'hui.
+  // Une facture est en retard si sa date d'échéance est strictement avant aujourd'hui.
   return isBefore(startOfDay(new Date(dueDate)), startOfDay(new Date()));
 };
 

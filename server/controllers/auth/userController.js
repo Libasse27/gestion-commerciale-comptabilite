@@ -3,7 +3,7 @@
 //
 // Ce contrôleur gère les requêtes HTTP pour les opérations CRUD sur les
 // entités Utilisateur. Ces actions sont généralement réservées aux
-// administrateurs.
+// administrateurs, à l'exception des routes '/me' pour le profil personnel.
 //
 // Il s'appuie sur le modèle User et pourrait, pour des logiques plus
 // complexes, s'appuyer sur un `userService` dédié.
@@ -12,6 +12,7 @@
 const User = require('../../models/auth/User');
 const AppError = require('../../utils/appError');
 const asyncHandler = require('../../utils/asyncHandler');
+const { capitalizeFirstLetter } = require('../../utils/helpers');
 
 /**
  * Filtre un objet pour ne garder que les champs autorisés.
@@ -29,10 +30,10 @@ const filterObj = (obj, ...allowedFields) => {
 /**
  * @desc    Récupérer tous les utilisateurs
  * @route   GET /api/v1/users
- * @access  Privé/Admin
+ * @access  Privé (permission: 'user:read:all')
  */
 exports.getAllUsers = asyncHandler(async (req, res, next) => {
-  const users = await User.find().populate('role', 'name');
+  const users = await User.find().populate('role', 'name').sort('lastName firstName');
 
   res.status(200).json({
     status: 'success',
@@ -47,10 +48,10 @@ exports.getAllUsers = asyncHandler(async (req, res, next) => {
 /**
  * @desc    Récupérer un utilisateur par son ID
  * @route   GET /api/v1/users/:id
- * @access  Privé/Admin
+ * @access  Privé (permission: 'user:read')
  */
 exports.getUserById = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.params.id).populate('role');
+  const user = await User.findById(req.params.id).populate('role', 'name');
 
   if (!user) {
     return next(new AppError('Aucun utilisateur trouvé avec cet identifiant.', 404));
@@ -68,12 +69,14 @@ exports.getUserById = asyncHandler(async (req, res, next) => {
 /**
  * @desc    Créer un nouvel utilisateur (par un admin)
  * @route   POST /api/v1/users
- * @access  Privé/Admin
+ * @access  Privé (permission: 'user:create')
  */
 exports.createUser = asyncHandler(async (req, res, next) => {
-    // Cette fonction est similaire à `register` mais est destinée à un admin.
-    // Elle pourrait permettre de définir le rôle directement.
+    // Cette fonction est destinée à un admin. Elle pourrait permettre de définir le rôle,
+    // le statut actif, et d'envoyer un email d'invitation avec un mot de passe temporaire.
+    // Pour l'instant, elle se base sur le corps de la requête.
     const newUser = await User.create(req.body);
+    newUser.password = undefined; // Ne jamais renvoyer le mot de passe
 
     res.status(201).json({
         status: 'success',
@@ -87,14 +90,18 @@ exports.createUser = asyncHandler(async (req, res, next) => {
 /**
  * @desc    Mettre à jour un utilisateur (par un admin)
  * @route   PATCH /api/v1/users/:id
- * @access  Privé/Admin
+ * @access  Privé (permission: 'user:update')
  */
 exports.updateUser = asyncHandler(async (req, res, next) => {
-  // Un admin peut potentiellement tout mettre à jour : rôle, statut, etc.
+  // L'admin ne doit pas pouvoir mettre à jour le mot de passe via cette route.
+  if (req.body.password || req.body.passwordConfirm) {
+    return next(new AppError('Cette route ne permet pas de modifier les mots de passe.', 400));
+  }
+
   const user = await User.findByIdAndUpdate(req.params.id, req.body, {
-    new: true, // Retourne le document mis à jour
-    runValidators: true, // Applique les validateurs du schéma
-  });
+    new: true,
+    runValidators: true,
+  }).populate('role', 'name');
 
   if (!user) {
     return next(new AppError('Aucun utilisateur trouvé avec cet identifiant.', 404));
@@ -110,12 +117,14 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
 
 
 /**
- * @desc    Supprimer un utilisateur
+ * @desc    Supprimer un utilisateur (soft delete)
  * @route   DELETE /api/v1/users/:id
- * @access  Privé/Admin
+ * @access  Privé (permission: 'user:delete')
  */
 exports.deleteUser = asyncHandler(async (req, res, next) => {
-  const user = await User.findByIdAndDelete(req.params.id);
+  // Au lieu de supprimer, il est souvent préférable de désactiver le compte (soft delete)
+  // pour préserver l'historique et l'intégrité des données (ex: factures créées par cet utilisateur).
+  const user = await User.findByIdAndUpdate(req.params.id, { isActive: false });
 
   if (!user) {
     return next(new AppError('Aucun utilisateur trouvé avec cet identifiant.', 404));
@@ -135,13 +144,11 @@ exports.deleteUser = asyncHandler(async (req, res, next) => {
  */
 exports.getMe = asyncHandler(async (req, res, next) => {
     // Le middleware `protect` a déjà mis `req.user`.
-    // On peut donc simplement renvoyer ces informations.
-    const user = await User.findById(req.user.id).populate('role');
-
+    // On peut simplement le renvoyer. Le `populate` a déjà été fait dans `protect`.
     res.status(200).json({
         status: 'success',
         data: {
-            user,
+            user: req.user,
         }
     });
 });
@@ -153,24 +160,21 @@ exports.getMe = asyncHandler(async (req, res, next) => {
  * @access  Privé (tous les utilisateurs connectés)
  */
 exports.updateMe = asyncHandler(async (req, res, next) => {
-    // 1) Créer une erreur si l'utilisateur essaie de mettre à jour son mot de passe ici
     if (req.body.password || req.body.passwordConfirm) {
         return next(
-            new AppError(
-                'Cette route n\'est pas pour la mise à jour du mot de passe. Veuillez utiliser /updateMyPassword.',
-                400
-            )
+            new AppError("Cette route n'est pas pour la mise à jour du mot de passe. Veuillez utiliser /auth/updateMyPassword.", 400)
         );
     }
     
-    // 2) Filtrer les champs non désirés qui ne doivent pas être mis à jour
+    // Filtrer les champs que l'utilisateur a le droit de modifier lui-même.
     const filteredBody = filterObj(req.body, 'firstName', 'lastName', 'email');
+    if (filteredBody.firstName) filteredBody.firstName = capitalizeFirstLetter(filteredBody.firstName);
+    if (filteredBody.lastName) filteredBody.lastName = filteredBody.lastName.toUpperCase();
     
-    // 3) Mettre à jour le document utilisateur
     const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
         new: true,
         runValidators: true,
-    });
+    }).populate('role', 'name');
     
     res.status(200).json({
         status: 'success',

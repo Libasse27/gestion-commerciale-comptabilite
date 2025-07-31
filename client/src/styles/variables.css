@@ -12,19 +12,21 @@
 :root {
   /* --- Dimensions du Layout --- */
   --layout-sidebar-width: 280px;
+  --layout-sidebar-width-collapsed: 80px; /* Pour une future version repliée */
   --layout-header-height: 64px;
   
   /* --- Niveaux de Superposition (z-index) --- */
   /*
     Définir les z-index ici permet de gérer facilement l'ordre de
     superposition des éléments flottants (modales, tooltips, etc.).
+    On se base sur les valeurs de Bootstrap pour la compatibilité.
   */
   --z-index-dropdown: 1000;
   --z-index-sticky: 1020;
   --z-index-fixed: 1030;
   --z-index-modal-backdrop: 1040;
-  --z-index-offcanvas: 1050; /* Pour la sidebar en mode mobile */
-  --z-index-modal: 1060;
+  --z-index-offcanvas: 1045; /* Pour la sidebar en mode mobile */
+  --z-index-modal: 1055;
   --z-index-popover: 1070;
   --z-index-tooltip: 1080;
   --z-index-fullscreen-loader: 9999;
@@ -55,3 +57,7 @@
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 }
+  .app-logo {
+    font-weight: var(--font-weight-bold);
+    color: var(--theme-text-primary);
+  } 

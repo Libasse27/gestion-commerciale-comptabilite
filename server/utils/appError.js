@@ -23,17 +23,17 @@ class AppError extends Error {
     // 1. Appeler le constructeur parent (`Error`) avec le message.
     super(message);
 
-    // 2. Assigner le code de statut et le statut correspondants.
+    // 2. Assigner le code de statut et le statut ('fail' ou 'error') correspondants.
     this.statusCode = statusCode;
     this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
 
     // 3. Marquer cette erreur comme "opérationnelle".
     // Notre gestionnaire d'erreurs global utilisera cette propriété pour décider
-    // s'il doit afficher le message d'erreur en production.
+    // s'il doit afficher le message d'erreur en production ou le cacher.
     this.isOperational = true;
 
     // 4. Capturer la stack trace pour un débogage plus facile, en excluant
-    // le constructeur de la pile d'appel.
+    // le constructeur de la pile d'appel pour ne pas polluer le log.
     Error.captureStackTrace(this, this.constructor);
   }
 }

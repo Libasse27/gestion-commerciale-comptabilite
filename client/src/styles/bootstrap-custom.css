@@ -11,36 +11,43 @@
    Documentation : https://getbootstrap.com/docs/5.3/customize/css-variables/
 ============================================================================== */
 
+/* --- Importation d'une police personnalisée (optionnel) --- */
+/* Décommentez pour utiliser une police Google Fonts, par exemple. */
+/* @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'); */
+
+
 /* --- :root [Thème Clair par défaut] --- */
 :root {
   /* -- Couleurs Primaires -- */
-  /* Changez cette couleur pour la couleur principale de votre marque */
-  --bs-primary: #0d6efd; /* Bleu Bootstrap par défaut */
-  --bs-primary-rgb: 13, 110, 253; /* Doit correspondre à la couleur ci-dessus */
-  
-  --bs-secondary: #6c757d;
-  --bs-secondary-rgb: 108, 117, 125;
+  /* Changez cette couleur pour la couleur principale de votre marque/ERP */
+  --bs-primary: #1e40af; /* Un bleu plus profond et professionnel */
+  --bs-primary-rgb: 30, 64, 175;
+
+  --bs-secondary: #64748b; /* Gris-bleu */
+  --bs-secondary-rgb: 100, 116, 139;
   
   /* -- Couleurs Sémantiques -- */
-  --bs-success: #198754;
-  --bs-info: #0dcaf0;
-  --bs-warning: #ffc107;
-  --bs-danger: #dc3545;
+  --bs-success: #16a34a; /* Vert */
+  --bs-info: #0ea5e9; /* Cyan */
+  --bs-warning: #f59e0b; /* Ambre */
+  --bs-danger: #dc2626; /* Rouge */
   
   /* -- Couleurs de Fond et de Texte -- */
-  --bs-light: #f8f9fa;
-  --bs-dark: #212529;
+  --bs-light: #f1f5f9; /* Un gris très clair pour les fonds de section */
+  --bs-dark: #1e293b; /* Un bleu très sombre pour le texte ou les fonds sombres */
   
-  --bs-body-bg: #ffffff; /* Fond principal de la page */
-  --bs-body-color: #212529; /* Couleur du texte principal */
+  --bs-body-bg: #ffffff; /* Fond principal de la page (blanc) */
+  --bs-body-color: var(--bs-dark); /* Couleur du texte principal */
   
   /* -- Bordures -- */
-  --bs-border-color: #dee2e6;
+  --bs-border-color: #e2e8f0;
   --bs-border-radius: 0.375rem; /* Rayon des coins pour les cartes, boutons, etc. */
+  --bs-border-radius-lg: 0.5rem;
+  --bs-border-radius-sm: 0.25rem;
 
   /* -- Polices de Caractères -- */
-  /* Décommentez pour utiliser une police Google Fonts, par exemple */
-  /* @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'); */
+  /* Si vous avez importé Inter, vous pouvez l'utiliser ici */
+  /* --bs-font-sans-serif: 'Inter', system-ui, -apple-system, sans-serif; */
   --bs-font-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif;
   
   /* -- Liens -- */
@@ -50,24 +57,29 @@
   /* -- Ombres -- */
   --bs-box-shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   --bs-box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  --bs-box-shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
 }
 
 
 /* --- Thème Sombre (Optionnel) --- */
 /* S'active si vous ajoutez `data-bs-theme="dark"` à votre <html> ou <body> */
 [data-bs-theme="dark"] {
-  --bs-primary: #3b82f6; /* Un bleu plus vif pour le thème sombre */
-  --bs-primary-rgb: 59, 130, 246;
+  --bs-primary: #60a5fa; /* Un bleu plus lumineux pour le thème sombre */
+  --bs-primary-rgb: 96, 165, 250;
 
-  --bs-body-bg: #1a202c; /* Fond sombre */
-  --bs-body-color: #e2e8f0; /* Texte clair */
+  --bs-secondary: #94a3b8;
+
+  --bs-body-bg: #0f172a; /* Fond bleu nuit très sombre */
+  --bs-body-color: #cbd5e1; /* Texte gris clair */
   
-  --bs-border-color: #4a5568;
+  --bs-border-color: #334155;
   
   /* Les cartes et autres éléments "light" deviennent sombres */
-  --bs-light: #2d3748;
-  --bs-light-rgb: 45, 55, 72;
+  --bs-light: #1e293b;
+  --bs-light-rgb: 30, 41, 59;
   
+  --bs-dark-rgb: 203, 213, 225; /* Inverse pour le thème sombre */
+
   --bs-link-color: var(--bs-primary);
   --bs-link-hover-color: color-mix(in srgb, var(--bs-primary) 80%, white);
 }

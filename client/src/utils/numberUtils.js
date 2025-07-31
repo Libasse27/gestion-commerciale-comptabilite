@@ -23,14 +23,14 @@ export const roundTo = (num, decimals = 2) => {
 
 /**
  * S'assure qu'une valeur est un nombre valide, sinon retourne une valeur par défaut.
- * Très utile pour nettoyer les entrées de formulaire avant calcul.
+ * Très utile pour nettoyer les entrées de formulaire avant tout calcul.
  * @param {*} value - La valeur à parser.
  * @param {number} [defaultValue=0] - La valeur à retourner si l'entrée est invalide.
  * @returns {number}
  */
-export const parseNumber = (value, defaultValue = 0) => {
+export const ensureNumber = (value, defaultValue = 0) => {
   if (value === null || value === undefined || value === '') return defaultValue;
-  const num = Number(value);
+  const num = Number(String(value).replace(',', '.')); // Gère la virgule comme séparateur décimal
   return isNaN(num) ? defaultValue : num;
 };
 
@@ -42,13 +42,13 @@ export const parseNumber = (value, defaultValue = 0) => {
  * @param {number | string} line.prixUnitaire
  * @param {number | string} [line.remise=0] - Remise en pourcentage.
  * @param {number | string} [line.tva=18] - TVA en pourcentage.
- * @returns {{totalHT: number, totalTTC: number}}
+ * @returns {{totalHT: number, totalTTC: number, montantTVA: number, montantRemise: number}}
  */
-export const calculateLineTotal = ({ quantite, prixUnitaire, remise = 0, tva = 18 }) => {
-  const qte = parseNumber(quantite);
-  const pu = parseNumber(prixUnitaire);
-  const rem = parseNumber(remise);
-  const tvaRate = parseNumber(tva);
+export const calculateLineTotals = ({ quantite, prixUnitaire, remise = 0, tva = 18 }) => {
+  const qte = ensureNumber(quantite, 1);
+  const pu = ensureNumber(prixUnitaire);
+  const rem = ensureNumber(remise);
+  const tvaRate = ensureNumber(tva);
 
   const baseHT = qte * pu;
   const montantRemise = baseHT * (rem / 100);
@@ -59,43 +59,53 @@ export const calculateLineTotal = ({ quantite, prixUnitaire, remise = 0, tva = 1
   return {
     totalHT: roundTo(totalHT, 2),
     totalTTC: roundTo(totalTTC, 2),
+    montantRemise: roundTo(montantRemise, 2),
+    montantTVA: roundTo(montantTVA, 2),
   };
 };
 
 /**
  * Calcule les totaux globaux à partir d'un tableau de lignes.
  * @param {Array<object>} lines - Le tableau des lignes de la facture ou du devis.
- * @returns {{totalHT: number, totalTTC: number, totalTVA: number}}
+ * @returns {{totalHT: number, totalTTC: number, totalTVA: number, totalRemise: number}}
  */
 export const calculateGrandTotals = (lines) => {
     let totalHT = 0;
     let totalTTC = 0;
+    let totalRemise = 0;
+
+    if (!Array.isArray(lines)) {
+        return { totalHT: 0, totalTTC: 0, totalTVA: 0, totalRemise: 0 };
+    }
 
     lines.forEach(line => {
-        const lineTotals = calculateLineTotal(line);
+        const lineTotals = calculateLineTotals(line);
         totalHT += lineTotals.totalHT;
         totalTTC += lineTotals.totalTTC;
+        totalRemise += lineTotals.montantRemise;
     });
 
     const grandTotalHT = roundTo(totalHT, 2);
     const grandTotalTTC = roundTo(totalTTC, 2);
     const grandTotalTVA = roundTo(grandTotalTTC - grandTotalHT, 2);
+    const grandTotalRemise = roundTo(totalRemise, 2);
 
-    return { totalHT: grandTotalHT, totalTTC: grandTotalTTC, totalTVA: grandTotalTVA };
+    return { totalHT: grandTotalHT, totalTTC: grandTotalTTC, totalTVA: grandTotalTVA, totalRemise: grandTotalRemise };
 }
 
 
 /**
- * Calcule un pourcentage pour les barres de progression, etc.
+ * Calcule un pourcentage pour les barres de progression, etc., en s'assurant qu'il est entre 0 et 100.
  * @param {number} value - La valeur actuelle.
  * @param {number} total - La valeur totale.
  * @returns {number} Le pourcentage de 0 à 100, ou 0 si total est 0.
  */
 export const getPercentage = (value, total) => {
-  const val = parseNumber(value);
-  const tot = parseNumber(total);
+  const val = ensureNumber(value);
+  const tot = ensureNumber(total);
 
   if (tot === 0) return 0;
   
+  // Borne le résultat entre 0 et 100
   return Math.min(Math.max((val / tot) * 100, 0), 100);
 };

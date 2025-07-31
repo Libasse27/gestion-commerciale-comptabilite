@@ -1,86 +1,103 @@
 // ==============================================================================
-//        POINT D'ENTRÉE PRINCIPAL ET ORCHESTRATEUR DU SERVEUR
+//        POINT D'ENTRÉE PRINCIPAL DU SERVEUR
 //
-// Ce fichier est responsable du cycle de vie du serveur :
-// 1. Chargement des variables d'environnement.
-// 2. Connexion aux services externes (DB, Cache...).
-// 3. Création et démarrage du serveur HTTP.
-// 4. Initialisation de Socket.IO et des tâches planifiées (Cron Jobs).
-// 5. Gestion des arrêts propres (graceful shutdown) et des erreurs critiques.
+// Ce fichier orchestre le démarrage du serveur, la connexion à la BDD,
+// l'initialisation de Socket.IO, les tâches planifiées (cron jobs),
+// et la gestion des erreurs critiques ou arrêts système.
 // ==============================================================================
 
-// --- Chargement des variables d'environnement (DOIT ÊTRE FAIT EN PREMIER) ---
+// --- 1. Chargement des variables d'environnement ---
 require('dotenv').config();
 
+// --- 2. Dépendances ---
 const http = require('http');
-const app = require('./app'); // Importation de l'application Express configurée
+const app = require('./app');
 const { connectDB, disconnectDB } = require('./config/database');
 const { initSocket } = require('./config/socket');
+const { initializeCronJobs } = require('./jobs/cronJobs');
 const { logger } = require('./middleware/logger');
-const { initializeCronJobs } = require('./jobs/cronJobs'); // Importation de l'initialiseur de cron
+
+// --- 3. Fonctions utilitaires ---
 
 /**
- * Gère les arrêts propres en cas d'erreurs critiques ou de signaux système.
- * @param {http.Server} serverInstance L'instance du serveur à fermer.
+ * Gère les événements critiques et assure un arrêt propre du serveur.
+ * @param {http.Server} serverInstance
  */
 function setupProcessEventListeners(serverInstance) {
+  // Promesses non gérées
   process.on('unhandledRejection', async (err) => {
-    logger.error('ERREUR NON GÉRÉE (PROMESSE)! 💥 Arrêt progressif...', { error: err });
-    await disconnectDB();
-    serverInstance.close(() => process.exit(1));
+    logger.error('💥 Rejet de promesse non géré', { error: err });
+    await shutdown(serverInstance, 1);
   });
 
-  process.on('uncaughtException', (err) => {
-    logger.error('EXCEPTION NON INTERCEPTÉE! 💥 Arrêt immédiat...', { error: err });
-    process.exit(1);
+  // Exceptions non interceptées
+  process.on('uncaughtException', async (err) => {
+    logger.error('💥 Exception non interceptée', { error: err });
+    await shutdown(serverInstance, 1);
   });
 
+  // Interruption système (ex: Ctrl+C)
   process.on('SIGINT', async () => {
-    logger.warn('Signal SIGINT reçu. Démarrage de l\'arrêt propre du serveur...');
-    await disconnectDB();
-    serverInstance.close(() => {
-      logger.info('Serveur arrêté proprement.');
-      process.exit(0);
-    });
+    logger.warn('⚠️ Signal SIGINT reçu. Fermeture du serveur...');
+    await shutdown(serverInstance, 0);
   });
 }
 
 /**
- * Fonction principale asynchrone pour démarrer l'application.
+ * Ferme proprement le serveur et les connexions.
+ * @param {http.Server} serverInstance
+ * @param {number} code Code de sortie
  */
-async function startServer() {
+async function shutdown(serverInstance, code = 0) {
   try {
-    logger.info('====================================================');
-    logger.info('🚀 Démarrage du serveur...');
-    logger.info('====================================================');
-
-    // --- SÉQUENCE DE DÉMARRAGE ---
-    await connectDB(); // Étape 1: Connexion à la base de données
-    // Note: la connexion Redis est gérée dans son propre module config/redis.js
-
-    const server = http.createServer(app); // Étape 2: Création du serveur HTTP
-
-    initSocket(server); // Étape 3: Initialisation de Socket.IO
-
-    const PORT = process.env.PORT || 5000;
-    const serverInstance = server.listen(PORT, () => { // Étape 4: Démarrage de l'écoute
-      logger.info('====================================================');
-      logger.info('✅ SERVEUR DÉMARRÉ AVEC SUCCÈS');
-      logger.info(`   - Mode       : ${process.env.NODE_ENV || 'development'}`);
-      logger.info(`   - Port       : ${PORT}`);
-      logger.info(`   - PID        : ${process.pid}`);
-      logger.info('====================================================');
+    await disconnectDB();
+    serverInstance.close(() => {
+      logger.info('✅ Serveur arrêté proprement.');
+      process.exit(code);
     });
-
-    setupProcessEventListeners(serverInstance); // Étape 5: Mise en place des écouteurs pour l'arrêt propre
-
-    initializeCronJobs(); // Étape 6: Initialisation des tâches planifiées
-
-  } catch (error) {
-    logger.error('❌ Échec critique lors de la séquence de démarrage du serveur.', { error });
+  } catch (err) {
+    logger.error('❌ Échec lors de l\'arrêt du serveur', { error: err });
     process.exit(1);
   }
 }
 
-// --- Lancement de l'application ---
+// --- 4. Fonction principale de démarrage ---
+async function startServer() {
+  try {
+    logger.info('====================================================');
+    logger.info('🚀 DÉMARRAGE DU SERVEUR');
+    logger.info('====================================================');
+
+    // Connexion à la base de données
+    await connectDB();
+
+    // Création du serveur HTTP
+    const server = http.createServer(app);
+
+    // Initialisation de WebSocket
+    initSocket(server);
+
+    // Démarrage du serveur
+    const PORT = process.env.PORT || 5000;
+    const serverInstance = server.listen(PORT, () => {
+      logger.info('✅ SERVEUR EN LIGNE');
+      logger.info(`🌐 Environnement : ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`🚪 Port          : ${PORT}`);
+      logger.info(`🆔 PID           : ${process.pid}`);
+      logger.info('====================================================');
+    });
+
+    // Écoute des signaux système pour arrêt propre
+    setupProcessEventListeners(serverInstance);
+
+    // Lancement des tâches planifiées
+    initializeCronJobs();
+
+  } catch (error) {
+    logger.error('❌ Échec critique du démarrage du serveur', { error });
+    process.exit(1);
+  }
+}
+
+// --- 5. Lancement ---
 startServer();

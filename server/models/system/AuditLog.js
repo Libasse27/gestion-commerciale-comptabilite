@@ -16,7 +16,7 @@ const auditLogSchema = new mongoose.Schema(
   {
     /**
      * L'utilisateur qui a effectué l'action.
-     * Peut être null pour les actions système.
+     * Peut être null pour les actions système (ex: tentative de connexion échouée).
      */
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -26,7 +26,7 @@ const auditLogSchema = new mongoose.Schema(
     
     /**
      * Le type d'action effectuée.
-     * Utilise une énumération pour la cohérence.
+     * Utilise une énumération pour la cohérence des données.
      */
     action: {
         type: String,
@@ -69,7 +69,7 @@ const auditLogSchema = new mongoose.Schema(
     /**
      * Un champ pour stocker des détails supplémentaires.
      * Pour une action 'UPDATE', on pourrait stocker ici les changements
-     * (avant/après) sous forme de JSON.
+     * (avant/après) sous forme de JSON. Pour une erreur, le message d'erreur.
      */
     details: {
       type: mongoose.Schema.Types.Mixed,
@@ -87,6 +87,10 @@ auditLogSchema.index({ user: 1, createdAt: -1 });
 auditLogSchema.index({ entity: 1, entityId: 1, createdAt: -1 });
 
 
-const AuditLog = mongoose.model('AuditLog', auditLogSchema);
+/**
+ * On vérifie si le modèle a déjà été compilé avant de le créer pour éviter
+ * les erreurs lors du rechargement à chaud en développement.
+ */
+const AuditLog = mongoose.models.AuditLog || mongoose.model('AuditLog', auditLogSchema);
 
 module.exports = AuditLog;

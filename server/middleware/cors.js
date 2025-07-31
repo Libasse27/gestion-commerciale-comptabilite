@@ -15,9 +15,9 @@ const cors = require('cors');
 
 // --- Liste Blanche des Origines Autorisées ---
 // Récupérez les URL depuis les variables d'environnement.
-// Cela permet de configurer différentes origines pour le développement,
-// la pré-production et la production.
-const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '').split(',');
+// Cela permet de configurer différentes origines pour le dev, la pré-prod, etc.
+// Note: nous utilisons la même variable que pour la config Socket.IO pour la cohérence.
+const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',');
 
 /**
  * Options de configuration pour le middleware CORS.
@@ -28,15 +28,13 @@ const corsOptions = {
    * origine doit être autorisée.
    */
   origin: (origin, callback) => {
-    // En mode 'development', on peut autoriser les requêtes sans origine
-    // (ex: Postman, applications mobiles).
+    // Autoriser les requêtes sans origine (ex: Postman, apps mobiles) en mode dev
     if (process.env.NODE_ENV === 'development' && !origin) {
       return callback(null, true);
     }
 
-    // Si la liste blanche est vide ou si l'origine de la requête est incluse
-    // dans la liste blanche, on autorise la requête.
-    if (!allowedOrigins[0] || allowedOrigins.includes(origin)) {
+    // Si l'origine de la requête est incluse dans notre liste blanche, on autorise.
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       // Sinon, on rejette la requête avec une erreur.
@@ -63,8 +61,9 @@ const corsOptions = {
 
   /**
    * Spécifie la réponse pour les requêtes de "preflight" (OPTIONS).
+   * Renvoie 204 No Content, une pratique standard.
    */
-  optionsSuccessStatus: 204, // 204 No Content
+  optionsSuccessStatus: 204,
 };
 
 /**

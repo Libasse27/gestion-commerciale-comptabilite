@@ -1,15 +1,18 @@
 // ==============================================================================
 //           Service pour les Appels API liés à l'Authentification
 //
-// MISE À JOUR : Ajout des fonctions pour le processus de réinitialisation
-// de mot de passe.
+// Ce service encapsule tous les appels réseau (via Axios) vers les
+// endpoints d'authentification de l'API.
+// Il est utilisé par les thunks/actions Redux pour interagir avec le backend.
 // ==============================================================================
 
 import apiClient from './api';
-import { API_ENDPOINTS, LOCAL_STORAGE_KEYS } from '../utils/constants';
+import { API_ENDPOINTS } from '../utils/constants';
 
 /**
  * Envoie une requête de connexion à l'API.
+ * @param {{email: string, password: string}} credentials - Les identifiants de l'utilisateur.
+ * @returns {Promise<object>} Les données de la réponse (contenant user, accessToken, etc.).
  */
 const login = async (credentials) => {
   const response = await apiClient.post(API_ENDPOINTS.LOGIN, credentials);
@@ -18,6 +21,8 @@ const login = async (credentials) => {
 
 /**
  * Envoie une requête d'inscription à l'API.
+ * @param {object} userData - Les données du nouvel utilisateur.
+ * @returns {Promise<object>} Les données de la réponse.
  */
 const register = async (userData) => {
   const response = await apiClient.post(API_ENDPOINTS.REGISTER, userData);
@@ -25,12 +30,16 @@ const register = async (userData) => {
 };
 
 /**
- * Déconnecte l'utilisateur en supprimant les données du localStorage.
+ * Envoie une requête de déconnexion à l'API.
+ * Le backend peut alors invalider le refresh token si nécessaire.
+ * @returns {Promise<object>}
  */
-const logout = () => {
-  localStorage.removeItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN);
-  localStorage.removeItem(LOCAL_STORAGE_KEYS.REFRESH_TOKEN);
-  localStorage.removeItem(LOCAL_STORAGE_KEYS.USER_INFO);
+const logout = async () => {
+  // Même si la logique principale est de supprimer les tokens côté client,
+  // appeler un endpoint de déconnexion est une bonne pratique pour permettre
+  // au backend de faire du nettoyage (ex: invalider un refresh token).
+  const response = await apiClient.post(API_ENDPOINTS.LOGOUT, {});
+  return response.data;
 };
 
 /**
@@ -39,7 +48,7 @@ const logout = () => {
  * @returns {Promise<object>}
  */
 const requestPasswordReset = async (email) => {
-  const response = await apiClient.post(API_ENDPOINTS.REQUEST_PASSWORD_RESET, { email });
+  const response = await apiClient.post(API_ENDPOINTS.FORGOT_PASSWORD, { email });
   return response.data;
 };
 
@@ -51,7 +60,7 @@ const requestPasswordReset = async (email) => {
  */
 const resetPassword = async (token, password) => {
   // Construit l'URL dynamique avec le token
-  const url = `/auth/reset-password/${token}`;
+  const url = `${API_ENDPOINTS.RESET_PASSWORD}/${token}`;
   const response = await apiClient.patch(url, { password });
   return response.data;
 };
@@ -64,8 +73,6 @@ const authService = {
   logout,
   requestPasswordReset,
   resetPassword,
-  // refreshToken et getMe ont été retirés car leur logique est mieux gérée
-  // respectivement par l'intercepteur d'api.js et par un futur userService.
 };
 
 export default authService;

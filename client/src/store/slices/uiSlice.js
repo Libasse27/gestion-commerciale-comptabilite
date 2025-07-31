@@ -1,95 +1,104 @@
 // ==============================================================================
 //           Slice Redux pour la Gestion de l'État de l'Interface Utilisateur (UI)
 //
-// Ce slice est responsable de la gestion des états qui concernent
-// l'interface utilisateur mais qui ne sont pas des données métier, tels que :
-//   - L'état d'ouverture de la sidebar en mode responsive.
-//   - Le thème actuel de l'application (clair ou sombre).
-//   - L'état de chargement global.
+// Rôle : Ce slice centralise la gestion des états de l'UI non liés aux données,
+// tels que l'état du menu, le thème, ou les indicateurs de chargement globaux.
+// Il assure une séparation nette entre l'état de l'application et l'état de l'UI.
 //
-// Il permet de découpler la logique de l'UI de la logique des données.
+// Bonnes Pratiques Implémentées :
+// - Persistance du thème dans le localStorage.
+// - Détection du thème préféré de l'utilisateur.
+// - Reducers atomiques et clairs.
 // ==============================================================================
 
 import { createSlice } from '@reduxjs/toolkit';
 import { LOCAL_STORAGE_KEYS } from '../../utils/constants';
 
 /**
- * Fonction pour récupérer le thème initial depuis le localStorage ou les
- * préférences du système d'exploitation de l'utilisateur.
+ * Détermine le thème initial de l'application.
+ * Priorité : Thème sauvegardé > Préférence système > Thème par défaut ('light').
+ * @returns {'light' | 'dark'} Le thème à utiliser.
  */
 const getInitialTheme = () => {
-  const savedTheme = localStorage.getItem(LOCAL_STORAGE_KEYS.UI_THEME);
-  if (savedTheme) {
-    return savedTheme;
+  try {
+    const savedTheme = localStorage.getItem(LOCAL_STORAGE_KEYS.UI_THEME);
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      return savedTheme;
+    }
+
+    // Si aucun thème n'est sauvegardé, on se fie aux préférences de l'OS/navigateur.
+    if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+  } catch (error) {
+    console.error("Impossible d'accéder au localStorage pour le thème :", error);
   }
-  // Si aucun thème n'est sauvegardé, on regarde les préférences du navigateur/OS
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    return 'dark';
-  }
-  return 'light';
+  return 'light'; // Thème par défaut
 };
 
 // --- État Initial ---
 const initialState = {
   theme: getInitialTheme(),
-  isSidebarOpen: false, // La sidebar est fermée par défaut sur les petits écrans
-  globalLoading: false,
+  isSidebarOpen: false, // Le menu est fermé par défaut sur les petits écrans
+  globalLoading: false, // Indicateur pour un loader global (ex: au chargement initial)
 };
 
 
 // --- Création du Slice ---
-
 export const uiSlice = createSlice({
   name: 'ui',
   initialState,
   
-  // Reducers pour les actions synchrones
+  // Les reducers définissent comment l'état peut être modifié de manière synchrone.
   reducers: {
     /**
-     * Bascule l'état de la sidebar (ouvert/fermé).
+     * Bascule l'état d'ouverture du menu latéral (sidebar).
      */
     toggleSidebar: (state) => {
       state.isSidebarOpen = !state.isSidebarOpen;
     },
     
     /**
-     * Ouvre la sidebar.
+     * Force l'ouverture du menu latéral.
      */
     openSidebar: (state) => {
       state.isSidebarOpen = true;
     },
 
     /**
-     * Ferme la sidebar.
+     * Force la fermeture du menu latéral.
      */
     closeSidebar: (state) => {
       state.isSidebarOpen = false;
     },
 
     /**
-     * Change le thème de l'application et le sauvegarde dans le localStorage.
-     * @param {object} state - L'état actuel.
-     * @param {object} action - L'action contenant le nouveau thème dans son payload.
+     * Change le thème de l'application ('light' ou 'dark').
+     * @param {object} action - L'action contenant le nouveau thème dans `action.payload`.
      */
     setTheme: (state, action) => {
-      const newTheme = action.payload;
+      const newTheme = action.payload === 'dark' ? 'dark' : 'light';
       state.theme = newTheme;
-      localStorage.setItem(LOCAL_STORAGE_KEYS.UI_THEME, newTheme);
-      // La logique pour appliquer l'attribut `data-theme` au document
-      // peut se faire dans un `useEffect` qui écoute ce changement d'état.
+      // La persistance est gérée directement ici pour une meilleure encapsulation.
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEYS.UI_THEME, newTheme);
+      } catch (error) {
+        console.error("Impossible de sauvegarder le thème dans le localStorage :", error);
+      }
     },
     
     /**
-     * Active le loader global.
+     * Active ou désactive l'indicateur de chargement global.
+     * @param {object} action - L'action où `action.payload` est un booléen.
      */
     setGlobalLoading: (state, action) => {
-        state.globalLoading = action.payload;
+        state.globalLoading = !!action.payload; // Assure que la valeur est un booléen
     }
   },
 });
 
-// --- Exportation des Actions et du Reducer ---
-
+// --- Exportation des Actions ---
+// Ces "action creators" sont générés automatiquement par `createSlice`.
 export const {
   toggleSidebar,
   openSidebar,
@@ -98,4 +107,15 @@ export const {
   setGlobalLoading,
 } = uiSlice.actions;
 
+
+// --- Exportation des Sélecteurs (Bonne Pratique de Performance) ---
+// Les sélecteurs permettent d'extraire des données du store.
+// En les définissant ici, on centralise la logique d'accès à l'état.
+export const selectTheme = (state) => state.ui.theme;
+export const selectIsSidebarOpen = (state) => state.ui.isSidebarOpen;
+export const selectIsGlobalLoading = (state) => state.ui.globalLoading;
+
+
+// --- Exportation du Reducer ---
+// Le reducer sera ajouté au `rootReducer` global.
 export default uiSlice.reducer;

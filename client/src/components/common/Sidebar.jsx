@@ -1,114 +1,114 @@
 // ==============================================================================
 //                Composant Menu Latéral de Navigation (Sidebar)
 //
-// Ce composant affiche le menu de navigation principal et est maintenant
-// dynamique : il n'affiche que les liens correspondant aux permissions
-// de l'utilisateur connecté.
-//
-// Il utilise le hook `useAuth` pour obtenir les informations de l'utilisateur
-// et ses permissions.
+// Affiche le menu de navigation principal de l'application. Les liens affichés
+// sont conditionnés par les permissions de l'utilisateur connecté, récupérées
+// via le hook `usePermissions`.
 // ==============================================================================
-
 import React from 'react';
+import { useDispatch } from 'react-redux';
 import { Nav } from 'react-bootstrap';
 import { NavLink } from 'react-router-dom';
 import {
-  HouseDoorFill, Speedometer2, PeopleFill, BoxSeam,
-  Receipt, BookFill, CashCoin, BarChartFill, GearFill
+  Speedometer2, PeopleFill, BoxSeam, Receipt, BookFill,
+  BarChartFill, GearFill, BoxArrowLeft, Building, Folder
 } from 'react-bootstrap-icons';
 
-import { useAuth } from '../../hooks/useAuth'; // Pour vérifier les permissions
-import { USER_ROLES } from '../../utils/constants'; // Pour vérifier les rôles si besoin
+import { logout } from '../../store/slices/authSlice';
+import { usePermissions } from '../../hooks/usePermissions';
 
-// --- Composants de Navigation Internes ---
+// --- Sous-composant pour un lien de navigation ---
+const NavItem = ({ to, icon: Icon, text }) => (
+  <Nav.Item>
+    <Nav.Link as={NavLink} to={to} end className="d-flex align-items-center">
+      <Icon size={20} className="nav-icon" />
+      <span>{text}</span>
+    </Nav.Link>
+  </Nav.Item>
+);
 
-// Composant de base pour un lien
-const NavItem = ({ to, icon, text }) => {
-  const IconComponent = icon;
-  return (
-    <Nav.Item>
-      <Nav.Link as={NavLink} to={to} end>
-        <IconComponent size={18} className="me-3" />
-        <span>{text}</span>
-      </Nav.Link>
-    </Nav.Item>
-  );
-};
-
-// Composant "gardien" pour les liens nécessitant une permission
+// --- Sous-composant "gardien" pour protéger les liens ---
 const ProtectedNavItem = ({ requiredPermission, children }) => {
-  const { user } = useAuth();
-  
-  // Les permissions de l'utilisateur sont dans `user.role.permissions`
-  // Note : Le back-end doit "populer" les permissions dans l'objet `role`.
-  const userPermissions = user?.role?.permissions || [];
-  
-  // On vérifie si l'utilisateur est Admin ou si ses permissions incluent celle requise
-  const isAdmin = user?.role?.name === USER_ROLES.ADMIN;
-  const hasPermission = userPermissions.some(p => p.name === requiredPermission);
-
-  if (isAdmin || hasPermission) {
-    return children;
-  }
-  
-  return null; // N'affiche rien si l'utilisateur n'a pas la permission
+  const { hasPermission } = usePermissions();
+  return hasPermission(requiredPermission) ? children : null;
 };
 
+// --- Sous-composant pour un titre de section ---
+const NavSectionTitle = ({ text }) => <div className="sidebar-nav-title">{text}</div>;
 
+// ==========================================================
 // --- Composant Principal Sidebar ---
+// ==========================================================
+const Sidebar = () => {
+  const dispatch = useDispatch();
+  const { hasAnyPermission } = usePermissions();
 
-const Sidebar = ({ className }) => { // Accepte une prop `className` pour le mode responsive
+  const handleLogout = () => {
+    dispatch(logout());
+    // La redirection est gérée par PrivateRoute
+  };
+
+  // On détermine si l'utilisateur a le droit de voir au moins un élément de chaque section
+  const canSeeCommercial = hasAnyPermission(['client:read', 'fournisseur:read', 'produit:read', 'vente:read']);
+  const canSeeComptabilite = hasAnyPermission(['comptabilite:read']);
+  const canSeeAnalyse = hasAnyPermission(['rapport:read']);
+
   return (
-    <aside className={`sidebar ${className || ''}`}>
+    <aside className="sidebar">
       <div className="sidebar-header">
-        <h4>ERP Sénégal</h4>
+        <NavLink to="/dashboard" className="app-logo">
+          {import.meta.env.VITE_APP_NAME || 'ERP Sénégal'}
+        </NavLink>
       </div>
+      
       <Nav className="flex-column sidebar-nav">
-        {/* -- Section Principale -- */}
+        {/* --- Section Principale --- */}
         <NavItem to="/dashboard" icon={Speedometer2} text="Tableau de bord" />
 
-        {/* -- Section Gestion Commerciale -- */}
-        <div className="nav-section-title">Gestion Commerciale</div>
-        <ProtectedNavItem requiredPermission="read:client">
+        {/* --- Section Gestion Commerciale (conditionnelle) --- */}
+        {canSeeCommercial && <NavSectionTitle text="Gestion Commerciale" />}
+        <ProtectedNavItem requiredPermission="client:read">
           <NavItem to="/clients" icon={PeopleFill} text="Clients" />
         </ProtectedNavItem>
-        <ProtectedNavItem requiredPermission="read:fournisseur">
-          <NavItem to="/fournisseurs" icon={PeopleFill} text="Fournisseurs" />
+        <ProtectedNavItem requiredPermission="fournisseur:read">
+          <NavItem to="/fournisseurs" icon={Building} text="Fournisseurs" />
         </ProtectedNavItem>
-        <ProtectedNavItem requiredPermission="read:produit">
+        <ProtectedNavItem requiredPermission="produit:read">
           <NavItem to="/produits" icon={BoxSeam} text="Produits & Services" />
         </ProtectedNavItem>
-        <ProtectedNavItem requiredPermission="read:vente">
+        <ProtectedNavItem requiredPermission="vente:read">
           <NavItem to="/ventes" icon={Receipt} text="Ventes" />
         </ProtectedNavItem>
 
-        {/* -- Section Comptabilité -- */}
-        <ProtectedNavItem requiredPermission="read:comptabilite">
-          <div className="nav-section-title">Comptabilité</div>
-          <NavItem to="/comptabilite/ecritures" icon={BookFill} text="Écritures" />
-          <NavItem to="/comptabilite/plan" icon={BookFill} text="Plan Comptable" />
-        </ProtectedNavItem>
-        
-        {/* -- Section Trésorerie -- */}
-        <ProtectedNavItem requiredPermission="read:paiement">
-            <div className="nav-section-title">Trésorerie</div>
-            <NavItem to="/paiements" icon={CashCoin} text="Paiements" />
-        </ProtectedNavItem>
+        {/* --- Section Comptabilité (conditionnelle) --- */}
+        {canSeeComptabilite && (
+          <>
+            <NavSectionTitle text="Comptabilité" />
+            <NavItem to="/comptabilite" icon={BookFill} text="Journaux" />
+          </>
+        )}
 
-        {/* -- Section Rapports -- */}
-        <ProtectedNavItem requiredPermission="read:rapport">
-            <div className="nav-section-title">Analyse</div>
+        {/* --- Section Analyse (conditionnelle) --- */}
+        {canSeeAnalyse && (
+          <>
+            <NavSectionTitle text="Analyse" />
             <NavItem to="/rapports" icon={BarChartFill} text="Rapports" />
-        </ProtectedNavItem>
-        
-
-        {/* -- Section Paramètres (en bas, réservée à l'Admin) -- */}
-        <div className="mt-auto">
-            <ProtectedNavItem requiredPermission="manage:settings">
-                <NavItem to="/parametres" icon={GearFill} text="Paramètres" />
-            </ProtectedNavItem>
-        </div>
+          </>
+        )}
       </Nav>
+      
+      {/* --- Section du Bas (collée en bas) --- */}
+      <div className="sidebar-footer">
+        <ProtectedNavItem requiredPermission="settings:manage">
+          <NavItem to="/parametres" icon={GearFill} text="Paramètres" />
+        </ProtectedNavItem>
+        <Nav.Item>
+          <Nav.Link onClick={handleLogout} className="text-danger">
+            <BoxArrowLeft size={20} className="nav-icon" />
+            <span>Déconnexion</span>
+          </Nav.Link>
+        </Nav.Item>
+      </div>
     </aside>
   );
 };

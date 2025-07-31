@@ -5,36 +5,43 @@
 // qu'aux utilisateurs NON authentifiés (ex: page de connexion, d'inscription).
 //
 // Son fonctionnement est l'inverse du `PrivateRoute` :
-//   1. Il vérifie l'état d'authentification de l'utilisateur.
+//   1. Il vérifie l'état d'authentification de l'utilisateur via le hook `useAuth`.
 //   2. Si l'utilisateur est authentifié, il le redirige vers une page
-//      par défaut (comme le tableau de bord) pour l'empêcher de revoir
-//      la page de connexion.
+//      par défaut (comme le tableau de bord).
 //   3. Si l'utilisateur n'est pas authentifié, il rend le composant enfant
 //      (la page publique, ex: `<LoginPage />`).
 // ==============================================================================
 
 import React from 'react';
-import { useSelector } from 'react-redux';
 import { Navigate, Outlet } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth'; // On utilise notre hook personnalisé
+import Loader from '../components/common/Loader';
 
 /**
  * Un composant qui rend ses enfants uniquement si l'utilisateur N'EST PAS authentifié.
  * Sinon, il redirige vers une page principale de l'application.
  *
- * @param {object} props - Les propriétés du composant.
- * @param {string} [props.redirectTo='/dashboard'] - La page vers laquelle rediriger si l'utilisateur est déjà connecté.
+ * @param {{redirectTo?: string}} props
  */
-const PublicRoute = ({ redirectTo = '/' }) => {
-  // On lit l'état d'authentification depuis le store Redux.
-  const { token } = useSelector((state) => state.auth);
+const PublicRoute = ({ redirectTo = '/dashboard' }) => {
+  // Le hook `useAuth` fournit un état clair `isAuthenticated` et `isLoading`.
+  const { isAuthenticated, isLoading } = useAuth();
 
-  // Si l'utilisateur est connecté (le token existe), on le redirige.
-  if (token) {
+  // Pendant que l'on vérifie l'état d'authentification au premier chargement,
+  // on affiche un loader pour éviter d'afficher brièvement la page publique
+  // avant de potentiellement rediriger.
+  if (isLoading) {
+    return <Loader fullscreen text="Chargement de l'application..." />;
+  }
+
+  // Si l'utilisateur est connecté, on le redirige loin des pages publiques.
+  if (isAuthenticated) {
     return <Navigate to={redirectTo} replace />;
   }
 
   // Si l'utilisateur n'est pas connecté, on affiche la page demandée
-  // (ex: le formulaire de connexion).
+  // (ex: le formulaire de connexion). `<Outlet />` sera remplacé par le
+  // composant enfant de la route (<LoginPage />, <RegisterPage />, etc.).
   return <Outlet />;
 };
 

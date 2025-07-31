@@ -1,10 +1,11 @@
 // ==============================================================================
 //                Service d'Authentification (Logique Métier)
 //
-// ... (description inchangée)
-//
-// MISE À JOUR : La fonction de connexion peuple désormais les permissions
-// du rôle de l'utilisateur pour les rendre disponibles immédiatement côté client.
+// Ce service orchestre la logique métier complexe pour l'authentification :
+//   - Inscription d'utilisateurs avec assignation de rôle par défaut.
+//   - Connexion avec vérification des identifiants et génération de tokens.
+//   - Rafraîchissement de session.
+//   - Processus complet de réinitialisation de mot de passe.
 // ==============================================================================
 
 const bcrypt = require('bcryptjs');
@@ -15,18 +16,19 @@ const { sendEmail } = require('../../config/email');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../../config/jwt');
 const { USER_ROLES } = require('../../utils/constants');
 const { isStrongPassword } = require('../../utils/validators');
+const { capitalizeFirstLetter } = require('../../utils/helpers');
 
 /**
  * Enregistre un nouvel utilisateur dans la base de données.
  * @param {object} userData - Données de l'utilisateur (firstName, lastName, email, password).
- * @returns {Promise<object>} L'objet utilisateur nouvellement créé (sans le mot de passe).
+ * @returns {Promise<import('mongoose').Document>} L'objet utilisateur créé (sans le mdp).
  * @throws {Error} Si l'email est déjà utilisé ou si le rôle par défaut n'est pas trouvé.
  */
 async function registerUser(userData) {
   const { email, password, firstName, lastName } = userData;
 
   if (!isStrongPassword(password)) {
-    throw new Error('Le mot de passe ne respecte pas les critères de sécurité.');
+    throw new Error('Le mot de passe ne respecte pas les critères de sécurité (8+ caractères, 1 majuscule, 1 minuscule, 1 chiffre, 1 spécial).');
   }
 
   const existingUser = await User.findOne({ email });
@@ -40,9 +42,9 @@ async function registerUser(userData) {
   }
 
   const newUser = new User({
-    firstName,
-    lastName,
-    email,
+    firstName: capitalizeFirstLetter(firstName),
+    lastName: lastName.toUpperCase(),
+    email: email.toLowerCase(),
     password,
     role: defaultRole._id,
   });
@@ -61,20 +63,18 @@ async function registerUser(userData) {
  * @throws {Error} Si les identifiants sont incorrects ou si l'utilisateur est inactif.
  */
 async function loginUser(email, password) {
-  // MISE À JOUR CLÉ ICI :
-  // On utilise .populate() deux fois. D'abord pour le rôle, puis pour les
-  // permissions à l'intérieur du rôle.
-  const user = await User.findOne({ email })
+  const user = await User.findOne({ email: email.toLowerCase() })
     .select('+password')
     .populate({
       path: 'role',
+      select: 'name permissions', // Sélectionne le nom du rôle et le tableau d'IDs de permissions
       populate: {
         path: 'permissions',
-        select: 'name -_id', // Sélectionne uniquement le champ 'name' des permissions
+        select: 'name -_id', // Pour chaque ID de permission, récupère uniquement le nom
       },
     });
 
-  if (!user || !(await bcrypt.compare(password, user.password))) {
+  if (!user || !(await user.comparePassword(password))) {
     throw new Error('Email ou mot de passe incorrect.');
   }
 
@@ -85,8 +85,20 @@ async function loginUser(email, password) {
   const accessToken = generateAccessToken(user._id);
   const refreshToken = generateRefreshToken(user._id);
 
-  user.password = undefined;
-  return { accessToken, refreshToken, user };
+  // Formater les permissions en un simple tableau de chaînes
+  const userPermissions = user.role.permissions.map(p => p.name);
+  
+  // Créer l'objet utilisateur final à renvoyer
+  const userToReturn = {
+    id: user._id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    role: user.role.name,
+    permissions: userPermissions,
+  };
+
+  return { accessToken, refreshToken, user: userToReturn };
 }
 
 /**
@@ -96,15 +108,16 @@ async function loginUser(email, password) {
  * @throws {Error} Si le refresh token est invalide.
  */
 async function refreshAuthToken(token) {
-  // ... (fonction inchangée)
   const decoded = verifyRefreshToken(token);
-  if (!decoded) {
+  if (!decoded || !decoded.id) {
     throw new Error('Refresh token invalide ou expiré.');
   }
+
   const user = await User.findById(decoded.id);
   if (!user || !user.isActive) {
     throw new Error('Utilisateur introuvable ou compte désactivé.');
   }
+
   const accessToken = generateAccessToken(user._id);
   return { accessToken };
 }
@@ -114,18 +127,21 @@ async function refreshAuthToken(token) {
  * @param {string} email - L'email de l'utilisateur.
  */
 async function requestPasswordReset(email) {
-  // ... (fonction inchangée)
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email: email.toLowerCase() });
+  // Ne pas révéler si l'utilisateur existe ou non.
   if (!user) {
     return;
   }
-  const resetToken = await tokenService.createToken(user._id, 'passwordReset', 1);
+
+  const resetToken = await tokenService.createToken(user._id, 'passwordReset', 1); // Valide 1 jour
   const resetURL = `${process.env.APP_URL}/reset-password/${resetToken}`;
+
   await sendEmail({
     to: user.email,
     subject: 'Réinitialisation de votre mot de passe - ERP Sénégal',
-    html: `<p>Bonjour ${user.firstName},</p><p>Pour réinitialiser votre mot de passe, veuillez cliquer sur ce <a href="${resetURL}">lien</a>. Le lien est valide pendant 24 heures.</p>`,
-    text: `Bonjour ${user.firstName},\n\nPour réinitialiser votre mot de passe, veuillez copier ce lien dans votre navigateur : ${resetURL}\nLe lien est valide pendant 24 heures.`,
+    // On utilisera un template HTML/Pug plus tard
+    html: `<p>Bonjour ${user.firstName},</p><p>Pour réinitialiser votre mot de passe, veuillez cliquer sur ce <a href="${resetURL}">lien</a>. Le lien expirera dans 24 heures.</p>`,
+    text: `Bonjour ${user.firstName},\n\nPour réinitialiser votre mot de passe, copiez ce lien dans votre navigateur : ${resetURL}\nLe lien expirera dans 24 heures.`,
   });
 }
 
@@ -136,18 +152,20 @@ async function requestPasswordReset(email) {
  * @throws {Error} Si le token est invalide ou le mot de passe trop faible.
  */
 async function finalizePasswordReset(token, newPassword) {
-  // ... (fonction inchangée)
   if (!isStrongPassword(newPassword)) {
     throw new Error('Le nouveau mot de passe ne respecte pas les critères de sécurité.');
   }
+
   const tokenDoc = await tokenService.validateToken(token, 'passwordReset');
   if (!tokenDoc) {
     throw new Error('Le token de réinitialisation est invalide ou a expiré.');
   }
+
   const user = await User.findById(tokenDoc.userId);
   if (!user) {
     throw new Error('Utilisateur associé au token introuvable.');
   }
+
   user.password = newPassword;
   await user.save();
   await tokenService.deleteToken(token, 'passwordReset');

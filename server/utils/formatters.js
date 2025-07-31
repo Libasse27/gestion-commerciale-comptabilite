@@ -11,27 +11,29 @@
 
 /**
  * Formate un objet Date au format français standard (JJ/MM/AAAA).
- * @param {Date} date - L'objet Date à formater.
+ * @param {Date | string} date - L'objet Date ou une chaîne de date valide à formater.
  * @returns {string} La date formatée ou une chaîne vide si l'entrée est invalide.
  */
 const formatDateFr = (date) => {
-  if (!(date instanceof Date) || isNaN(date)) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (isNaN(d.getTime())) {
     return '';
   }
-  return new Intl.DateTimeFormat('fr-SN', {
+  return new Intl.DateTimeFormat('fr-SN', { // fr-SN pour le format sénégalais
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  }).format(date);
+  }).format(d);
 };
 
 /**
- * Formate un objet Date pour inclure l'heure (JJ/MM/AAAA HH:mm).
- * @param {Date} date - L'objet Date à formater.
+ * Formate un objet Date pour inclure l'heure (JJ/MM/AAAA HH:mm:ss).
+ * @param {Date | string} date - L'objet Date ou une chaîne de date valide à formater.
  * @returns {string} La date et l'heure formatées.
  */
 const formatDateTimeFr = (date) => {
-  if (!(date instanceof Date) || isNaN(date)) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (isNaN(d.getTime())) {
     return '';
   }
   return new Intl.DateTimeFormat('fr-SN', {
@@ -42,36 +44,37 @@ const formatDateTimeFr = (date) => {
     minute: '2-digit',
     second: '2-digit',
     hour12: false,
-  }).format(date);
+  }).format(d);
 };
 
 /**
  * Formate un nombre en devise XOF (Franc CFA) avec symbole et séparateurs.
- * Alias de la fonction dans helpers.js pour la centralisation du formatage.
  * @param {number} amount - Le montant à formater.
- * @returns {string} Le montant formaté (ex: "1 234 567 FCFA").
+ * @returns {string} Le montant formaté (ex: "1 234 567 FCFA").
  */
 const formatCurrency = (amount) => {
   if (typeof amount !== 'number') return '0 FCFA';
   return new Intl.NumberFormat('fr-SN', {
     style: 'currency',
     currency: 'XOF',
+    currencyDisplay: 'code', // Utilise 'code' (FCFA) au lieu de 'symbol' (F CFA) pour plus de clarté
   }).format(amount);
 };
 
 /**
- * Formate un numéro de téléphone au format sénégalais.
+ * Formate un numéro de téléphone au format international sénégalais.
  * Ex: 771234567 -> "+221 77 123 45 67"
  * @param {string | number} phone - Le numéro de téléphone.
- * @returns {string} Le numéro formaté.
+ * @returns {string} Le numéro formaté, ou une chaîne vide si l'entrée est invalide.
  */
 const formatPhoneSN = (phone) => {
   if (!phone) return '';
   const phoneStr = phone.toString().replace(/\D/g, ''); // Enlève tout ce qui n'est pas un chiffre
-  if (phoneStr.length === 9) { // Format 7X XXX XX XX
+
+  if (phoneStr.length === 9) { // Format local 7X XXX XX XX
     return `+221 ${phoneStr.slice(0, 2)} ${phoneStr.slice(2, 5)} ${phoneStr.slice(5, 7)} ${phoneStr.slice(7, 9)}`;
   }
-  if (phoneStr.startsWith('221') && phoneStr.length === 12) { // Format 2217X...
+  if (phoneStr.startsWith('221') && phoneStr.length === 12) { // Format international 2217X...
     const localPart = phoneStr.slice(3);
     return `+221 ${localPart.slice(0, 2)} ${localPart.slice(2, 5)} ${localPart.slice(5, 7)} ${localPart.slice(7, 9)}`;
   }
@@ -81,8 +84,8 @@ const formatPhoneSN = (phone) => {
 /**
  * Tronque une chaîne de caractères si elle dépasse une certaine longueur.
  * @param {string} str - La chaîne à tronquer.
- * @param {number} maxLength - La longueur maximale.
- * @returns {string} La chaîne tronquée avec "..."
+ * @param {number} maxLength - La longueur maximale avant troncature.
+ * @returns {string} La chaîne originale ou tronquée avec "..."
  */
 const truncateString = (str, maxLength) => {
   if (typeof str !== 'string' || str.length <= maxLength) {
@@ -99,16 +102,20 @@ const truncateString = (str, maxLength) => {
 const formatObjectForLog = (obj) => {
   if (typeof obj !== 'object' || obj === null) return '';
 
-  const sanitizedObj = { ...obj };
-  const sensitiveKeys = ['password', 'token', 'jwt', 'secret', 'authorization', 'apiKey'];
+  try {
+    const sanitizedObj = { ...obj };
+    const sensitiveKeys = ['password', 'token', 'jwt', 'secret', 'authorization', 'apikey', 'passwordresettoken'];
 
-  for (const key in sanitizedObj) {
-    if (sensitiveKeys.includes(key.toLowerCase())) {
-      sanitizedObj[key] = '***REDACTED***';
+    for (const key in sanitizedObj) {
+      if (sensitiveKeys.includes(key.toLowerCase())) {
+        sanitizedObj[key] = '***REDACTED***';
+      }
     }
-  }
 
-  return JSON.stringify(sanitizedObj, null, 2); // Le '2' indente le JSON pour la lisibilité
+    return JSON.stringify(sanitizedObj, null, 2); // Le '2' indente le JSON pour la lisibilité
+  } catch (error) {
+    return "Could not format object for logging.";
+  }
 };
 
 

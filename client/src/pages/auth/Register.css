@@ -1,0 +1,492 @@
+:root {
+  --register-primary-color: #0d6efd;
+  --register-secondary-color: #6c757d;
+  --register-success-color: #198754;
+  --register-danger-color: #dc3545;
+  --register-warning-color: #ffc107;
+  --register-info-color: #0dcaf0;
+  --register-light-bg: #f8f9fa;
+  --register-shadow-color: rgba(0, 0, 0, 0.15);
+  --register-border-radius: 16px;
+  --register-transition: all 0.3s ease;
+  --register-gradient-start: #667eea;
+  --register-gradient-end: #764ba2;
+}
+
+/* Conteneur principal de la page d'inscription */
+.register-container {
+  background: linear-gradient(135deg, var(--register-gradient-start) 0%, var(--register-gradient-end) 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.register-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* Effet de particules flottantes pour l'inscription */
+.register-container::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-image:
+    radial-gradient(2px 2px at 25px 35px, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(2px 2px at 50px 75px, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(1px 1px at 100px 45px, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 140px 85px, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(2px 2px at 180px 35px, rgba(255, 255, 255, 0.3), transparent);
+  background-repeat: repeat;
+  background-size: 220px 120px;
+  animation: floatRegister 25s linear infinite;
+  pointer-events: none;
+  opacity: 0.7;
+  will-change: transform;
+}
+
+@keyframes floatRegister {
+  0% {
+    transform: translateY(0px) translateX(0px);
+  }
+  25% {
+    transform: translateY(-15px) translateX(10px);
+  }
+  50% {
+    transform: translateY(5px) translateX(-8px);
+  }
+  75% {
+    transform: translateY(-8px) translateX(12px);
+  }
+  100% {
+    transform: translateY(0px) translateX(0px);
+  }
+}
+
+/* Carte d'inscription */
+.register-card {
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: var(--register-border-radius);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  transition: var(--register-transition);
+  animation: slideInScale 1s ease-out;
+  position: relative;
+  z-index: 1;
+  max-width: 500px;
+  width: 100%;
+}
+
+.register-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border-radius: var(--register-border-radius);
+  pointer-events: none;
+}
+
+.register-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.25);
+}
+
+/* En-tête de la carte d'inscription */
+.register-header h2 {
+  color: var(--register-primary-color);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 2;
+  font-size: 2.2rem;
+  background: linear-gradient(45deg, var(--register-primary-color), #4dabf7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.register-header p {
+  color: var(--register-secondary-color);
+  font-size: 1.1rem;
+  margin-bottom: 0;
+  position: relative;
+  z-index: 2;
+  font-weight: 500;
+}
+
+/* Styles des formulaires d'inscription */
+.register-form .form-label {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+/* Groupes d'input avec icônes pour l'inscription */
+.register-form .input-group {
+  border-radius: 10px;
+  overflow: hidden;
+  transition: var(--register-transition);
+  margin-bottom: 1rem;
+}
+
+.register-form .input-group:focus-within {
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+  transform: scale(1.02);
+}
+
+/* Texte des icônes dans les inputs d'inscription */
+.register-form .input-group-text {
+  background: linear-gradient(135deg, var(--register-primary-color), #4dabf7);
+  color: white;
+  border: none;
+  padding: 12px 15px;
+  font-size: 1.1rem;
+  min-width: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Champs de saisie pour l'inscription */
+.register-form .form-control {
+  border: 2px solid #e9ecef;
+  padding: 12px 15px;
+  font-size: 1rem;
+  transition: var(--register-transition);
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-radius: 0 8px 8px 0;
+}
+
+.register-form .form-control:focus {
+  border-color: var(--register-primary-color);
+  box-shadow: none;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.register-form .form-control:disabled {
+  background-color: #f8f9fa !important;
+  color: #6c757d !important;
+  opacity: 0.7;
+}
+
+.register-form .form-control::placeholder {
+  color: #6c757d !important;
+  opacity: 0.7;
+}
+
+/* Texte d'aide pour les champs */
+.register-form .form-text {
+  font-size: 0.8rem;
+  color: var(--register-info-color);
+  margin-top: 0.25rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.register-form .form-text::before {
+  content: "ℹ️";
+  font-size: 0.9rem;
+}
+
+/* Bouton d'inscription */
+.register-btn {
+  background: linear-gradient(45deg, var(--register-primary-color), #4dabf7);
+  border: none;
+  border-radius: 10px;
+  padding: 15px 30px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  transition: var(--register-transition);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
+}
+
+.register-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.6s;
+}
+
+.register-btn:hover::before {
+  left: 100%;
+}
+
+.register-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(13, 110, 253, 0.4);
+}
+
+.register-btn:active {
+  transform: translateY(-1px);
+}
+
+.register-btn:disabled {
+  background: var(--register-secondary-color);
+  transform: none;
+  box-shadow: none;
+}
+
+/* Liens de navigation pour l'inscription */
+.register-links {
+  border-top: 1px solid rgba(233, 236, 239, 0.6);
+  padding-top: 1rem;
+  margin-top: 2rem;
+}
+
+.register-links a {
+  color: var(--register-primary-color);
+  text-decoration: none;
+  font-weight: 600;
+  transition: var(--register-transition);
+  position: relative;
+}
+
+.register-links a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background: linear-gradient(45deg, var(--register-primary-color), #4dabf7);
+  transition: width 0.3s ease;
+}
+
+.register-links a:hover {
+  color: #0a58ca;
+  transform: translateY(-1px);
+}
+
+.register-links a:hover::after {
+  width: 100%;
+}
+
+/* Animations pour l'inscription */
+@keyframes slideInScale {
+  from {
+    opacity: 0;
+    transform: translateY(60px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulseRegister {
+  0% {
+    box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 20px rgba(13, 110, 253, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+  }
+}
+
+@keyframes shimmerRegister {
+  0% {
+    background-position: -300px 0;
+  }
+  100% {
+    background-position: calc(300px + 100%) 0;
+  }
+}
+
+/* Animation pour le loader d'inscription */
+.register-loading {
+  animation: pulseRegister 2s infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.register-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmerRegister 2s infinite;
+}
+
+/* États d'erreur et de succès pour l'inscription */
+.register-form .form-control.is-invalid {
+  border-color: var(--register-danger-color);
+  animation: shakeRegister 0.6s ease-in-out;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.register-form .form-control.is-valid {
+  border-color: var(--register-success-color);
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+@keyframes shakeRegister {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+  20%, 40%, 60%, 80% { transform: translateX(8px); }
+}
+
+/* Responsive Design pour l'inscription */
+@media (max-width: 768px) {
+  .register-container {
+    padding: 15px;
+  }
+
+  .register-card {
+    width: 100% !important;
+    max-width: 500px;
+    margin: 15px;
+  }
+
+  .register-header h2 {
+    font-size: 1.8rem;
+  }
+
+  .register-form .form-control,
+  .register-form .input-group-text {
+    padding: 10px 12px;
+    font-size: 0.95rem;
+  }
+
+  .register-btn {
+    font-size: 1rem;
+    padding: 12px 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .register-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .register-header p {
+    font-size: 1rem;
+  }
+
+  .register-form .input-group {
+    margin-bottom: 0.8rem;
+  }
+
+  .register-btn {
+    padding: 10px 20px;
+    letter-spacing: 0.5px;
+  }
+}
+
+/* Mode sombre pour l'inscription */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --register-light-bg: #212529;
+    --register-shadow-color: rgba(0, 0, 0, 0.4);
+  }
+
+  .register-card {
+    background: rgba(33, 37, 41, 0.96);
+    color: #fff;
+  }
+
+  .register-form .form-label {
+    color: #e9ecef;
+  }
+
+  /* Les champs de texte restent blancs avec texte noir même en mode sombre */
+  .register-form .form-control {
+    background-color: #ffffff !important;
+    border-color: #495057;
+    color: #000000 !important;
+  }
+
+  .register-form .form-control:focus {
+    background-color: #ffffff !important;
+    border-color: var(--register-primary-color);
+    color: #000000 !important;
+  }
+
+  .register-form .form-control::placeholder {
+    color: #6c757d !important;
+    opacity: 0.7;
+  }
+}
+
+/* Utilitaires supplémentaires pour l'inscription */
+.register-progress-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.register-step {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #e9ecef;
+  transition: var(--register-transition);
+}
+
+.register-step.active {
+  background-color: var(--register-primary-color);
+  transform: scale(1.3);
+}
+
+.register-step.completed {
+  background-color: var(--register-success-color);
+}
+
+/* Effet de validation en temps réel */
+.register-form .input-group.validating {
+  animation: validatePulse 1s ease-in-out;
+}
+
+@keyframes validatePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(13, 110, 253, 0);
+  }
+}

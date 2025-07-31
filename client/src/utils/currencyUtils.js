@@ -9,7 +9,8 @@
 // (principalement le Franc CFA - XOF).
 // ==============================================================================
 
-import { parseNumber } from './numberUtils'; // On réutilise notre parseur de nombre
+// On dépend de notre numberUtils pour parser les nombres de manière robuste
+import { ensureNumber } from './numberUtils';
 
 /**
  * Objet de configuration pour les devises supportées.
@@ -18,7 +19,7 @@ import { parseNumber } from './numberUtils'; // On réutilise notre parseur de n
 const CURRENCY_CONFIG = Object.freeze({
   XOF: {
     code: 'XOF',
-    symbol: 'F CFA',
+    symbol: 'FCFA',
     locale: 'fr-SN', // Locale spécifique pour le Sénégal
     decimalDigits: 0, // Le Franc CFA n'a généralement pas de centimes
   },
@@ -39,12 +40,12 @@ const CURRENCY_CONFIG = Object.freeze({
  * @returns {string} Le montant joliment formaté.
  *
  * @example
- * formatCurrency(1234567) // "1 234 567 F CFA"
- * formatCurrency(999.75, 'EUR') // "999,75 €"
+ * formatCurrency(1234567) // "1 234 567 FCFA"
+ * formatCurrency(999.75, 'EUR') // "999,75 €"
  */
 export const formatCurrency = (amount, currencyCode = 'XOF') => {
   const config = CURRENCY_CONFIG[currencyCode] || CURRENCY_CONFIG.XOF;
-  const number = parseNumber(amount, 0);
+  const number = ensureNumber(amount, 0);
 
   try {
     return new Intl.NumberFormat(config.locale, {
@@ -52,6 +53,7 @@ export const formatCurrency = (amount, currencyCode = 'XOF') => {
       currency: config.code,
       minimumFractionDigits: config.decimalDigits,
       maximumFractionDigits: config.decimalDigits,
+      currencyDisplay: 'code', // Préférer 'FCFA' à 'F CFA'
     }).format(number);
   } catch (error) {
     console.error(`Erreur lors du formatage de la devise ${currencyCode}:`, error);
@@ -61,23 +63,25 @@ export const formatCurrency = (amount, currencyCode = 'XOF') => {
 };
 
 /**
- * Convertit un montant formaté en une valeur numérique.
- * Utile pour parser les entrées utilisateur.
- * @param {string} formattedAmount - La chaîne de caractères à parser (ex: "1.234,56 €").
+ * Convertit un montant formaté (chaîne de caractères) en une valeur numérique.
+ * Utile pour parser les entrées utilisateur dans les formulaires.
+ * @param {string} formattedAmount - La chaîne de caractères à parser (ex: "1.234,56 €" ou "1 234 567 FCFA").
  * @returns {number} La valeur numérique.
  *
  * @example
- * parseCurrency("1 234 567 F CFA") // 1234567
+ * parseCurrency("1 234 567 FCFA") // 1234567
  */
 export const parseCurrency = (formattedAmount) => {
   if (typeof formattedAmount !== 'string') {
-    return parseNumber(formattedAmount, 0);
+    return ensureNumber(formattedAmount, 0);
   }
 
   // Expression régulière pour extraire uniquement les chiffres et le séparateur décimal (virgule ou point)
-  const numericString = formattedAmount.replace(/[^0-9,.-]+/g, '').replace(',', '.');
+  const numericString = formattedAmount
+    .replace(/[^0-9,.-]+/g, "") // Supprime tout sauf les chiffres, virgules, points, tirets
+    .replace(',', '.'); // Remplace la virgule décimale par un point
   
-  return parseNumber(numericString, 0);
+  return ensureNumber(parseFloat(numericString), 0);
 };
 
 /**
@@ -85,9 +89,13 @@ export const parseCurrency = (formattedAmount) => {
  * @param {number | string} amount - Le montant.
  * @param {string} [currencyCode='XOF'] - Le code de la devise pour déterminer le nombre de décimales.
  * @returns {string}
+ *
+ * @example
+ * formatForInput(1234, 'XOF') // "1234"
+ * formatForInput(1234.56, 'EUR') // "1234.56"
  */
 export const formatForInput = (amount, currencyCode = 'XOF') => {
     const config = CURRENCY_CONFIG[currencyCode] || CURRENCY_CONFIG.XOF;
-    const number = parseNumber(amount, 0);
+    const number = ensureNumber(amount, 0);
     return number.toFixed(config.decimalDigits);
-}
+};

@@ -1,34 +1,34 @@
 // ==============================================================================
-//           Middleware de Logging avec Winston
+//                Middleware et Service de Logging avec Winston
 //
-// MISE À JOUR : Le `httpLogger` est amélioré pour inclure le statut de
-// la réponse et le temps d'exécution, le rendant aussi informatif que Morgan.
+// Ce module configure un logger robuste et professionnel en utilisant Winston.
+// Il gère différents niveaux, formats et transports (sorties) selon l'environnement.
+//
+// - En développement: logs colorés et lisibles dans la console.
+// - En production: logs au format JSON, stockés dans des fichiers rotatifs
+//   (un pour les infos générales, un pour les erreurs).
 // ==============================================================================
 
 const winston = require('winston');
 const path = require('path');
-const onFinished = require('on-finished'); // Pour logger après la fin de la réponse
+const onFinished = require('on-finished');
 require('winston-daily-rotate-file');
 
-// --- Définition des niveaux et couleurs ---
+// Définition des niveaux de log et des couleurs associées
 const levels = { error: 0, warn: 1, info: 2, http: 3, debug: 4 };
 const colors = { error: 'red', warn: 'yellow', info: 'green', http: 'magenta', debug: 'white' };
 winston.addColors(colors);
 
-// --- Format des logs ---
+// Format des logs : JSON en production, format texte coloré en développement
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
-  // On ajoute les métadonnées (comme l'objet error) au message de log
-  winston.format.metadata({ fillExcept: ['message', 'level', 'timestamp', 'label'] }),
-  // En production, format JSON
+  winston.format.metadata({ fillExcept: ['message', 'level', 'timestamp'] }),
   process.env.NODE_ENV === 'production'
     ? winston.format.json()
-    // En développement, format texte coloré
     : winston.format.combine(
         winston.format.colorize({ all: true }),
         winston.format.printf((info) => {
           let log = `${info.timestamp} ${info.level}: ${info.message}`;
-          // Affiche les métadonnées si elles existent
           if (Object.keys(info.metadata).length) {
             log += ` ${JSON.stringify(info.metadata, null, 2)}`;
           }
@@ -37,60 +37,88 @@ const logFormat = winston.format.combine(
       )
 );
 
-// --- Définition des Transports ---
+// Transports (sorties) des logs : toujours la console.
 const transports = [
-  // Toujours logger dans la console
   new winston.transports.Console(),
 ];
+
+// En production, on ajoute les fichiers rotatifs
 if (process.env.NODE_ENV === 'production') {
   transports.push(
+    // Fichier pour tous les logs de niveau 'info' et plus
     new winston.transports.DailyRotateFile({
       filename: path.join(__dirname, '..', 'logs', 'app-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD', zippedArchive: true, maxSize: '20m', maxFiles: '14d', level: 'info',
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '20m',
+      maxFiles: '14d',
+      level: 'info',
     }),
+    // Fichier séparé uniquement pour les erreurs critiques
     new winston.transports.DailyRotateFile({
       filename: path.join(__dirname, '..', 'logs', 'error-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD', zippedArchive: true, maxSize: '20m', maxFiles: '14d', level: 'error',
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '20m',
+      maxFiles: '14d',
+      level: 'error',
     })
   );
 }
 
-// --- Création du Logger ---
+// Création de l'instance du logger
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
   levels,
   format: logFormat,
   transports,
-  exitOnError: false,
+  exitOnError: false, // Ne pas arrêter l'application sur une erreur de log
 });
 
 /**
- * Middleware amélioré pour logger les requêtes HTTP.
+ * Middleware pour logger les requêtes HTTP entrantes.
  */
 const httpLogger = (req, res, next) => {
-    const start = Date.now();
-    const { method, url, ip } = req;
+  const start = Date.now();
+  const { method, originalUrl, ip } = req;
 
-    // `onFinished` est un écouteur qui se déclenche juste avant que la réponse ne soit envoyée.
-    onFinished(res, (err, finalRes) => {
-        const ms = Date.now() - start;
-        const { statusCode } = finalRes;
-        const message = `${method} ${url} ${statusCode} - ${ms}ms - IP: ${ip}`;
-        
-        // On logue en `warn` ou `error` si le statut est >= 400
-        if (statusCode >= 500) {
-            logger.error(message);
-        } else if (statusCode >= 400) {
-            logger.warn(message);
-        } else {
-            logger.http(message);
-        }
-    });
+  // onFinished se déclenche quand la réponse est envoyée
+  onFinished(res, (err, finalRes) => {
+    const ms = Date.now() - start;
+    const { statusCode } = finalRes;
+    const message = `${method} ${originalUrl} ${statusCode} [${ms}ms] - IP: ${ip}`;
 
-    next();
-}
+    if (err || statusCode >= 500) {
+      logger.error(message, { error: err ? err.message : 'Server Error' });
+    } else if (statusCode >= 400) {
+      logger.warn(message);
+    } else {
+      logger.http(message); // Niveau 'http' pour les requêtes réussies
+    }
+  });
+
+  next();
+};
+
+/**
+ * Middleware pour logger automatiquement les erreurs attrapées par le gestionnaire global.
+ * Ce middleware ne fait que logger l'erreur, il ne l'envoie pas au client.
+ */
+const logErrorMiddleware = (err, req, res, next) => {
+  logger.error(err.message, {
+    stack: err.stack,
+    url: req.originalUrl,
+    method: req.method,
+    ip: req.ip,
+    // Ne pas logger les données sensibles comme le corps de la requête en production.
+    ...(process.env.NODE_ENV === 'development' && { body: req.body }),
+  });
+  next(err); // Passe l'erreur au gestionnaire suivant (errorHandler)
+};
+
 
 module.exports = {
-    logger,
-    httpLogger,
+  logger,
+  httpLogger,
+  logErrorMiddleware,
 };

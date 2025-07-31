@@ -1,68 +1,59 @@
 // ==============================================================================
-//           Configuration du Store Redux Principal de l'Application
+//           Configuration du Store Redux Principal
 //
-// Ce fichier est le point central de la configuration de Redux Toolkit.
-// Il est responsable de :
-//   - L'assemblage de tous les reducers via le `rootReducer`.
-//   - L'ajout des middlewares personnalisés (pour les appels API, l'auth, etc.)
-//     à la chaîne de middlewares par défaut.
-//   - La création et l'exportation du "store" Redux unique qui sera
-//     utilisé dans toute l'application.
+// Ce fichier est le cœur de la gestion d'état de l'application.
+// Il configure et crée le store Redux en utilisant Redux Toolkit.
 //
-// `configureStore` de Redux Toolkit simplifie ce processus en incluant par
-// défaut des outils utiles comme Redux Thunk et les Redux DevTools.
+// Il assemble les reducers, ajoute les middlewares nécessaires, et injecte
+// l'instance du store dans le client API pour résoudre les dépendances circulaires.
 // ==============================================================================
 
 import { configureStore } from '@reduxjs/toolkit';
-
-// --- Importation des pièces du puzzle ---
 import rootReducer from './rootReducer';
-import apiMiddleware from './middleware/apiMiddleware';
-import authMiddleware from './middleware/authMiddleware';
-// import { logger } from 'redux-logger'; // Un logger utile en développement
+
+// On importe la fonction d'injection depuis notre client API
+import { injectStore } from '../services/api';
+
+// --- Importation des Middlewares (Optionnel selon l'architecture choisie) ---
+// import apiMiddleware from './middleware/apiMiddleware';
+// import authMiddleware from './middleware/authMiddleware';
 
 /**
- * Crée et configure le store Redux de l'application.
+ * Création et configuration du store Redux.
  */
-export const store = configureStore({
-  /**
-   * `reducer`: Le reducer racine qui combine tous les reducers des slices.
-   * Il définit la forme de l'état global.
-   */
+const store = configureStore({
+  // `rootReducer` est la combinaison de tous les reducers de nos slices.
   reducer: rootReducer,
+  
+  // `middleware` est l'endroit où l'on ajoute nos middlewares personnalisés.
+  // `getDefaultMiddleware` inclut déjà des outils utiles comme `redux-thunk`.
+  middleware: (getDefaultMiddleware) => 
+    getDefaultMiddleware({
+      // Il est recommandé de garder la vérification de sérialisabilité activée,
+      // mais elle peut être désactivée si vous avez des raisons spécifiques
+      // de stocker des valeurs non-sérialisables (comme des Dates).
+      serializableCheck: false,
+    }),
+    // Exemple si vous utilisiez des middlewares personnalisés :
+    // .concat(apiMiddleware, authMiddleware),
 
-  /**
-   * `middleware`: Une fonction qui nous permet de personnaliser la chaîne de middlewares.
-   * `getDefaultMiddleware` nous donne accès aux middlewares inclus par défaut
-   * (comme redux-thunk), et nous y ajoutons les nôtres.
-   */
-  middleware: (getDefaultMiddleware) => {
-    const defaultMiddleware = getDefaultMiddleware({
-      // Optionnel : désactiver la vérification de sérialisation si vous
-      // avez besoin de stocker des valeurs non-sérialisables (ex: Dates).
-      // serializableCheck: false,
-    });
-    
-    // Ajoute nos middlewares personnalisés à la chaîne
-    const customMiddleware = defaultMiddleware
-      .concat(apiMiddleware)
-      .concat(authMiddleware);
-
-    // En développement, on peut ajouter un logger pour voir toutes les actions
-    // et les changements d'état dans la console.
-    if (import.meta.env.MODE === 'development') {
-      // Pour utiliser redux-logger, installez-le avec `npm install redux-logger`
-      // const { logger } = require('redux-logger');
-      // customMiddleware.push(logger);
-    }
-    
-    return customMiddleware;
-  },
-
-  /**
-   * `devTools`: Active ou désactive l'extension Redux DevTools du navigateur.
-   * Activé par défaut en développement, désactivé en production.
-   * Nous le forçons ici pour être explicite.
-   */
-  devTools: import.meta.env.MODE !== 'production',
+  // Activer les Redux DevTools uniquement en environnement de développement
+  // pour des raisons de performance et de sécurité.
+  devTools: process.env.NODE_ENV !== 'production',
 });
+
+
+// ==============================================================================
+// ---                       INJECTION DE DÉPENDANCE                        ---
+// ==============================================================================
+// C'est l'étape cruciale.
+// On injecte le store qui vient d'être créé dans le module `api.js`.
+// L'intercepteur Axios aura maintenant accès à `store.dispatch` et `store.getState`
+// pour gérer la déconnexion automatique en cas d'erreur 401.
+injectStore(store);
+
+export default store;
+
+// --- Inférence des types pour TypeScript (Optionnel mais recommandé) ---
+// export type RootState = ReturnType<typeof store.getState>;
+// export type AppDispatch = typeof store.dispatch;

@@ -1,65 +1,53 @@
 // ==============================================================================
-//           Routeur pour les Ressources de Statistiques (/api/v1/statistiques)
+// Routeur pour les ressources de statistiques (/api/v1/statistiques)
 //
-// Ce fichier définit toutes les routes liées à la récupération de données
-// agrégées, de KPIs et de rapports.
-//
-// Toutes les routes de ce module sont protégées et requièrent une permission
-// spécifique (`read:rapport`), car elles exposent des données commerciales
-// sensibles.
+// MISE À JOUR : Ajout d'une route pour récupérer les KPIs d'un client spécifique.
 // ==============================================================================
 
 const express = require('express');
 
-// --- Importation des Contrôleurs et Middlewares ---
+// --- Importation des contrôleurs et middlewares ---
 const statistiquesController = require('../controllers/commercial/statistiquesController');
 const authMiddleware = require('../middleware/auth');
 const { checkPermission } = require('../middleware/permissions');
 const { sensitiveOperationLimiter } = require('../middleware/rateLimiter');
 
-
-// --- Initialisation du Routeur ---
+// --- Initialisation du routeur ---
 const router = express.Router();
 
-
-// --- Application des Middlewares de Sécurité Globaux au Routeur ---
-
-// 1. L'utilisateur doit être connecté.
+// --- Middleware de sécurité global appliqué à toutes les routes ---
 router.use(authMiddleware);
 
-// 2. L'utilisateur doit avoir la permission de lire les rapports.
+// La permission de base pour lire les rapports/statistiques
 router.use(checkPermission('read:rapport'));
 
-
-// --- Définition des Routes de Statistiques ---
+// --- Définition des routes ---
 
 /**
  * @route   GET /api/v1/statistiques/kpis-commerciaux
- * @desc    Récupère les indicateurs clés de performance pour le tableau de bord.
- * @access  Privé (read:rapport)
+ * @desc    Récupère les KPIs globaux pour le tableau de bord principal.
+ * @access  Privé (permission read:rapport requise)
  */
-router.get(
-    '/kpis-commerciaux',
-    statistiquesController.getKpisCommerciaux
-);
+router.get('/kpis-commerciaux', statistiquesController.getKpisCommerciaux);
 
 /**
  * @route   GET /api/v1/statistiques/ventes-annuelles
- * @desc    Récupère les données agrégées des ventes mensuelles sur 12 mois pour les graphiques.
- * @access  Privé (read:rapport)
+ * @desc    Récupère les données pour le graphique des ventes sur 12 mois.
+ * @access  Privé (permission read:rapport requise)
+ * @middleware Rate limiter pour protéger les opérations lourdes
  */
 router.get(
-    '/ventes-annuelles',
-    // On peut appliquer un rate limiter plus strict pour les requêtes potentiellement lourdes.
-    sensitiveOperationLimiter,
-    statistiquesController.getVentesAnnuelles
+  '/ventes-annuelles',
+  sensitiveOperationLimiter,
+  statistiquesController.getVentesAnnuelles
 );
 
-// TODO: Ajouter d'autres routes pour des rapports plus spécifiques
-// Exemple :
-// router.get('/top-clients', statistiquesController.getTopClients);
-// router.get('/top-produits', statistiquesController.getTopProduits);
+/**
+ * @route   GET /api/v1/statistiques/client/:clientId
+ * @desc    Récupère les KPIs pour un client spécifique.
+ * @access  Privé (permission read:rapport ou read:client requise)
+ */
+router.get('/client/:clientId', statistiquesController.getKpisForClient);
 
-
-// --- Exportation du Routeur ---
+// --- Exportation du routeur ---
 module.exports = router;

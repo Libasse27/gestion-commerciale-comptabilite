@@ -2,8 +2,8 @@
 //                  Configuration du Service Cloudinary
 //
 // Ce module configure et exporte le SDK Cloudinary. Il fournit des fonctions
-// utilitaires pour interagir avec le service Cloudinary, notamment pour
-// le téléversement (upload) et la suppression d'actifs.
+// utilitaires pour interagir avec le service, notamment pour le téléversement
+// (upload) et la suppression d'actifs.
 //
 // L'utilisation d'un service comme Cloudinary est la meilleure pratique pour
 // la production, car elle dissocie le stockage des fichiers de votre serveur
@@ -14,11 +14,10 @@ const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier');
 
 // -- Configuration de Cloudinary --
-// Le SDK est configuré automatiquement en utilisant les variables d'environnement
-// CLOUDINARY_URL ou les variables individuelles (cloud_name, api_key, api_secret).
+// Le SDK est configuré en utilisant les variables d'environnement.
 // Nous nous assurons qu'elles sont présentes au démarrage.
 if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-  console.error('❌ Erreur: Les variables d\'environnement Cloudinary ne sont pas définies.');
+  console.error('❌ Erreur: Les variables d\'environnement Cloudinary (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET) ne sont pas définies.');
   // Dans un cas réel, vous pourriez vouloir arrêter le serveur si Cloudinary est essentiel.
   // process.exit(1);
 }
@@ -27,7 +26,7 @@ cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true, // Toujours utiliser HTTPS
+  secure: true, // Toujours utiliser HTTPS pour les URLs générées
 });
 
 /**
@@ -76,7 +75,7 @@ const deleteFromCloudinary = (publicId) => {
 
 
 module.exports = {
-  cloudinary, // Exporte l'instance configurée
+  cloudinary, // Exporte l'instance configurée si besoin
   uploadFromBuffer,
-  deleteFromCloudinary
+  deleteFromCloudinary,
 };

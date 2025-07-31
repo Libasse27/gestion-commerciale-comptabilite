@@ -1,76 +1,53 @@
 // ==============================================================================
-//                POINT D'ENTRÉE PRINCIPAL DE L'APPLICATION REACT
+//           Point d'Entrée de l'Application Client (main.jsx)
 //
-// Ce fichier est le point de départ de l'application côté client.
-// Il est responsable de :
-//   - L'importation des feuilles de style globales dans un ordre précis.
-//   - La configuration du store Redux.
-//   - L'injection des "Providers" de contexte (Redux, Thème, etc.).
-//   - Le rendu du composant racine `<App />` dans le DOM.
+// Ce fichier est le tout premier script exécuté par le navigateur.
+// Son rôle est de :
+//   1. Importer toutes les feuilles de style globales dans le bon ordre.
+//   2. "Rendre" le composant racine `<App />` dans l'élément `#root`
+//      du fichier `index.html`.
 // ==============================================================================
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.jsx';
 
-// --- Importation des Fournisseurs de Contexte et de State ---
-import { Provider } from 'react-redux';
-import { store } from './store';
-// import { ThemeProvider } from './context/ThemeContext'; // Décommentez si vous utilisez le Contexte pour le thème
+// --- Importation des Feuilles de Style Globales ---
+// L'ordre d'importation est crucial pour la cascade des styles (CSS).
 
-// Dans main.jsx, avec les autres imports CSS
-import 'react-datepicker/dist/react-datepicker.css';
-
-// --- IMPORTATION DES FEUILLES DE STYLE GLOBALES ---
-// L'ordre est CRUCIAL pour que la cascade de styles fonctionne correctement.
-
-// 1. Variables CSS (tailles, z-index, etc.)
-import './styles/variables.css';
-
-// 2. Personnalisation du thème Bootstrap (surcharge des variables de couleur)
+// 1. Personnalisation de Bootstrap (surcharge les variables par défaut)
 import './styles/bootstrap-custom.css';
 
-// 3. Définition des thèmes clair/sombre de l'application
-import './styles/themes.css';
+// 2. Variables de design globales (dimensions, z-index, etc.)
+import './styles/variables.css';
 
-// 4. Le framework CSS Bootstrap lui-même
+// 3. Le CSS principal de Bootstrap (qui utilisera nos variables personnalisées)
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-// 5. Styles des composants personnalisés (Sidebar, Header, etc.)
+// 4. Styles globaux de base et thèmes
+import './styles/globals.css';
+import './styles/themes.css';
+
+// 5. Styles pour nos composants personnalisés
 import './styles/components.css';
 
-// 6. Classes utilitaires personnalisées
+// 6. Classes utilitaires
 import './styles/utilities.css';
 
-// 7. Styles globaux et reset (body, h1, a, etc.)
-//import './index.css';
-
-// 8. Styles spécifiques pour l'impression
+// 7. Styles spécifiques (impression, responsive)
 import './styles/print.css';
-
-// 9. Styles responsives (doivent être en dernier pour surcharger les autres)
 import './styles/responsive.css';
 
 
-// --- Rendu de l'application dans le DOM ---
+// --- Importation du Composant Racine ---
+import App from './App.jsx';
 
-// On cherche l'élément racine `<div id="root">` dans `index.html`
-const rootElement = document.getElementById('root');
 
-// On crée la racine de l'application React
-const root = ReactDOM.createRoot(rootElement);
-
-root.render(
+// --- Rendu de l'Application ---
+// On cible l'élément `<div id="root"></div>` dans le fichier `public/index.html`.
+ReactDOM.createRoot(document.getElementById('root')).render(
+  // `React.StrictMode` est un outil de développement qui aide à détecter
+  // les problèmes potentiels dans l'application. Il n'a pas d'impact en production.
   <React.StrictMode>
-    {/* Le Provider Redux rend le store accessible à tous les composants */}
-    <Provider store={store}>
-      {/*
-        Le ThemeProvider (si vous l'utilisez) gérerait le changement de thème.
-        Il est bon de le placer ici pour envelopper toute l'application.
-      */}
-      {/* <ThemeProvider> */}
-        <App />
-      {/* </ThemeProvider> */}
-    </Provider>
-  </React.StrictMode>
+    <App />
+  </React.StrictMode>,
 );

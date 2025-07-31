@@ -1,12 +1,9 @@
 // ==============================================================================
 //           Slice Redux pour la Gestion de l'État du Tableau de Bord
 //
-// Ce slice gère les données affichées sur le tableau de bord principal,
-// comme les indicateurs de performance clés (KPIs) et les données pour
-// les graphiques.
-//
-// Il utilise des thunks pour récupérer ces données de manière asynchrone
-// via le `dashboardService`.
+// MISE À JOUR : Utilise maintenant un thunk unique `fetchDashboardData` pour
+// récupérer toutes les données du tableau de bord en un seul appel API,
+// ce qui est plus performant.
 // ==============================================================================
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
@@ -28,31 +25,17 @@ const initialState = {
 };
 
 
-// --- Thunks Asynchrones ---
+// --- Thunk Asynchrone Unique ---
 
 /**
- * Thunk pour récupérer les KPIs commerciaux.
+ * Thunk pour récupérer toutes les données du tableau de bord principal.
  */
-export const fetchKpis = createAsyncThunk(
-  'dashboard/fetchKpis',
+export const fetchDashboardData = createAsyncThunk(
+  'dashboard/fetchAll',
   async (_, thunkAPI) => {
     try {
-      return await dashboardService.getKpisCommerciaux();
-    } catch (error) {
-      const message = getErrorMessage(error);
-      return thunkAPI.rejectWithValue(message);
-    }
-  }
-);
-
-/**
- * Thunk pour récupérer les données du graphique des ventes annuelles.
- */
-export const fetchVentesAnnuelles = createAsyncThunk(
-  'dashboard/fetchVentesAnnuelles',
-  async (_, thunkAPI) => {
-    try {
-      return await dashboardService.getVentesAnnuelles();
+      // Appelle la fonction optimisée du service
+      return await dashboardService.getMainDashboardData();
     } catch (error) {
       const message = getErrorMessage(error);
       return thunkAPI.rejectWithValue(message);
@@ -71,31 +54,20 @@ export const dashboardSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // --- Cas pour fetchKpis ---
-      .addCase(fetchKpis.pending, (state) => {
+      .addCase(fetchDashboardData.pending, (state) => {
         state.isLoading = true;
+        state.isError = false;
+        state.message = '';
       })
-      .addCase(fetchKpis.fulfilled, (state, action) => {
+      .addCase(fetchDashboardData.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.kpis = action.payload;
+        // On met à jour toutes les données du slice d'un seul coup
+        // en utilisant le payload retourné par l'API.
+        state.kpis = action.payload.kpis;
+        state.ventesAnnuelles = action.payload.ventesAnnuelles;
+        // Ajoutez d'autres données ici si le payload en contient
       })
-      .addCase(fetchKpis.rejected, (state, action) => {
-        state.isLoading = false;
-        state.isError = true;
-        state.message = action.payload;
-      })
-
-      // --- Cas pour fetchVentesAnnuelles ---
-      .addCase(fetchVentesAnnuelles.pending, (state) => {
-        // On peut choisir de ne pas remettre isLoading à true si les KPIs
-        // se chargent déjà, pour éviter un clignotement de l'UI.
-        state.isLoading = true;
-      })
-      .addCase(fetchVentesAnnuelles.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.ventesAnnuelles = action.payload;
-      })
-      .addCase(fetchVentesAnnuelles.rejected, (state, action) => {
+      .addCase(fetchDashboardData.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;

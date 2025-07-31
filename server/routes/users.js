@@ -3,65 +3,98 @@
 //
 // Ce fichier définit toutes les routes liées à la gestion des utilisateurs.
 // Il met en œuvre une sécurité à plusieurs niveaux :
-//   1. `authMiddleware` : S'assure que l'utilisateur est connecté pour toutes
+//   1. `protect` : S'assure que l'utilisateur est connecté pour toutes
 //      les routes définies dans ce fichier.
 //   2. `checkPermission` : Restreint l'accès aux opérations CRUD
 //      (lister, créer, modifier, supprimer) aux seuls utilisateurs ayant
-//      la permission 'manage:users' (généralement les administrateurs).
+//      les permissions appropriées (ex: 'user:create', 'user:read:all').
 // ==============================================================================
 
 const express = require('express');
+const { body } = require('express-validator');
 
 // --- Importation des Contrôleurs ---
 const userController = require('../controllers/auth/userController');
-// `authController` est nécessaire pour la mise à jour du mot de passe
-// const authController = require('../controllers/auth/authController');
+// La mise à jour de mot de passe est dans authController
+const authController = require('../controllers/auth/authController');
 
 // --- Importation des Middlewares ---
-const authMiddleware = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 const { checkPermission } = require('../middleware/permissions');
+const { handleValidationErrors } = require('../middleware/validation');
+
 
 // --- Initialisation du Routeur ---
 const router = express.Router();
 
 
 // --- Application du Middleware d'Authentification ---
-// Le middleware `authMiddleware` sera appliqué à TOUTES les routes définies
+// Le middleware `protect` sera appliqué à TOUTES les routes définies
 // ci-dessous. Aucune route dans ce fichier n'est accessible à un visiteur.
-router.use(authMiddleware);
+router.use(protect);
 
 
-// --- Routes pour l'Utilisateur Connecté (sur son propre profil) ---
+// ==============================================================
+// --- Routes pour l'Utilisateur Connecté (son propre profil) ---
+// ==============================================================
 
-// Route pour obtenir les informations du profil de l'utilisateur actuellement connecté
 // Accessible à tout utilisateur connecté.
 router.get('/me', userController.getMe);
 
-// Route pour que l'utilisateur mette à jour ses propres informations (nom, email, etc.)
-router.patch('/updateMe', userController.updateMe);
+// L'utilisateur met à jour ses propres informations (nom, email).
+router.patch(
+    '/updateMe',
+    [
+        body('email').optional().isEmail().withMessage('Email invalide').normalizeEmail(),
+        body('firstName').optional().trim().notEmpty().withMessage('Le prénom ne peut être vide.'),
+        body('lastName').optional().trim().notEmpty().withMessage('Le nom ne peut être vide.'),
+    ],
+    handleValidationErrors,
+    userController.updateMe
+);
 
-// Route pour que l'utilisateur mette à jour son propre mot de passe
-// La logique serait dans `authController` car elle est liée à l'authentification.
-// router.patch('/updateMyPassword', authController.updatePassword);
+// L'utilisateur met à jour son propre mot de passe.
+// La logique est dans `authController` car elle est liée à l'authentification.
+// La route est `/auth/updateMyPassword` pour la cohérence. (À créer dans auth.js)
 
 
-// --- Routes pour l'Administration des Utilisateurs (CRUD) ---
+// ==============================================================
+// --- Routes pour l'Administration des Utilisateurs (CRUD)   ---
+// ==============================================================
 
-// Le middleware `checkPermission` est appliqué au reste des routes.
-// Seul un utilisateur avec la permission 'manage:users' (ex: Admin)
-// pourra accéder aux endpoints suivants.
-router.use(checkPermission('manage:users'));
+// Lister tous les utilisateurs
+router.get(
+    '/',
+    checkPermission('user:read:all'),
+    userController.getAllUsers
+);
 
-router
-  .route('/')
-  .get(userController.getAllUsers)
-  .post(userController.createUser);
+// Créer un nouvel utilisateur
+router.post(
+    '/',
+    checkPermission('user:create'),
+    userController.createUser
+);
 
+// Appliquer le middleware checkPermission à toutes les routes qui suivent avec un paramètre :id
+// Cela évite de le répéter pour get, patch et delete.
+// router.use('/:id', checkPermission('user:manage')); // Exemple si on a une permission générique
+
+// Opérations sur un utilisateur spécifique par son ID
 router
   .route('/:id')
-  .get(userController.getUserById)
-  .patch(userController.updateUser)
-  .delete(userController.deleteUser);
+  .get(
+    checkPermission('user:read'),
+    userController.getUserById
+  )
+  .patch(
+    checkPermission('user:update'),
+    userController.updateUser
+  )
+  .delete(
+    checkPermission('user:delete'),
+    userController.deleteUser
+  );
 
 
 // --- Exportation du Routeur ---

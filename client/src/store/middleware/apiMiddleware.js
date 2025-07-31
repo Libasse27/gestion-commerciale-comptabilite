@@ -11,12 +11,13 @@
 //      (ex: `clients/fetchFailed`).
 //
 // Avantages :
-//   - Découple les slices de la logique d'appel API.
+//   - Découple complètement les slices de la logique d'appel API.
 //   - Centralise la gestion des erreurs et des états de chargement.
+//   - Rend les slices plus simples et plus faciles à tester.
 // ==============================================================================
 
 import apiClient from '../../services/api';
-import { apiCallBegan } from '../actions/apiActions';
+import { apiCallBegan, apiCallSuccess, apiCallFailed } from '../actions/apiActions'; // Actions génériques
 import { getErrorMessage } from '../../utils/helpers';
 
 const apiMiddleware = ({ dispatch }) => (next) => async (action) => {
@@ -26,23 +27,23 @@ const apiMiddleware = ({ dispatch }) => (next) => async (action) => {
     return next(action);
   }
 
+  // Laisse l'action `apiCallBegan` passer (utile pour les outils de débogage Redux).
+  next(action);
+
   // 2. Extraire les informations de l'appel API depuis le payload de l'action.
   const {
     url,
     method = 'GET',
     data = null,
-    onStart, // Le nom de l'action à dispatcher au début (ex: 'clients/fetchStart')
-    onSuccess, // Le nom de l'action à dispatcher en cas de succès
-    onError, // Le nom de l'action à dispatcher en cas d'échec
+    onStart,    // Le nom de l'action à dispatcher au début (ex: 'clients/clientsRequested')
+    onSuccess,  // Le nom de l'action à dispatcher en cas de succès
+    onError,    // Le nom de l'action à dispatcher en cas d'échec
   } = action.payload;
 
   // 3. Dispatcher l'action de début de chargement, si elle est définie.
   if (onStart) {
     dispatch({ type: onStart });
   }
-
-  // Laisse l'action `apiCallBegan` passer (utile pour le débogage).
-  next(action);
 
   try {
     // 4. Effectuer la requête HTTP avec notre client Axios.
@@ -52,13 +53,23 @@ const apiMiddleware = ({ dispatch }) => (next) => async (action) => {
       data,
     });
 
-    // 5. En cas de succès, dispatcher l'action de succès avec les données de la réponse.
-    dispatch({ type: onSuccess, payload: response.data });
+    // 5. En cas de succès :
+    //    a) Dispatcher l'action de succès générique.
+    dispatch(apiCallSuccess(response.data));
+    //    b) Dispatcher l'action de succès spécifique au slice.
+    if (onSuccess) {
+      dispatch({ type: onSuccess, payload: response.data });
+    }
 
   } catch (error) {
-    // 6. En cas d'échec, dispatcher l'action d'échec avec un message d'erreur clair.
+    // 6. En cas d'échec :
     const errorMessage = getErrorMessage(error);
-    dispatch({ type: onError, payload: errorMessage });
+    //    a) Dispatcher l'action d'échec générique.
+    dispatch(apiCallFailed(errorMessage));
+    //    b) Dispatcher l'action d'échec spécifique au slice.
+    if (onError) {
+      dispatch({ type: onError, payload: errorMessage });
+    }
   }
 };
 

@@ -1,7 +1,7 @@
 /* ==============================================================================
              Feuille de Style Spécifique pour l'Impression
    
-   Ces styles ne sont appliqués que lors de l'impression d'une page.
+   Ces styles ne sont appliqués que lors de l'impression d'une page (`Ctrl+P`).
    Leur but est de nettoyer l'interface pour ne conserver que le contenu
    essentiel et de l'optimiser pour un format papier (A4).
    
@@ -11,28 +11,33 @@
 @media print {
   /* --- Masquer les éléments de l'interface non pertinents --- */
   
-  /* Masquer la sidebar, le header, et tout ce qui a la classe 'no-print' */
+  /* Masquer les éléments de navigation et d'action */
   .sidebar,
   .header,
   .footer,
-  .no-print {
+  .page-header-actions, /* Boutons comme "Ajouter", "Exporter" */
+  .pagination,
+  .btn, /* Masquer tous les boutons par défaut */
+  .no-print { /* Classe utilitaire pour masquer tout élément spécifique */
     display: none !important;
   }
 
   /* --- Styles globaux pour le corps du document imprimé --- */
 
   body {
-    font-size: 12pt; /* Une taille de police lisible sur papier */
-    color: #000000 !important; /* Forcer le texte en noir */
+    font-size: 11pt; /* Une taille de police lisible sur papier */
+    color: #000000 !important; /* Forcer le texte en noir pour l'économie d'encre */
     background-color: #ffffff !important; /* Forcer le fond en blanc */
   }
   
   /* Ajuster la zone de contenu principal pour qu'elle prenne toute la largeur */
   .content-wrapper,
-  .content-main {
-    margin-left: 0 !important;
+  .main-content {
+    margin: 0 !important;
     width: 100% !important;
     padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
     background-color: transparent !important;
   }
 
@@ -46,10 +51,11 @@
   table th, table td, .table th, .table td {
     border: 1px solid #ddd !important;
     padding: 8px !important;
+    background-color: #fff !important; /* Assurer un fond blanc pour les cellules */
   }
   
   table thead, .table thead {
-    display: table-header-group; /* Répéter l'en-tête du tableau sur chaque page */
+    display: table-header-group; /* Essentiel : répète l'en-tête du tableau sur chaque nouvelle page */
   }
 
   /* --- Styles pour les liens --- */
@@ -59,14 +65,14 @@
     text-decoration: none !important;
   }
   
-  /* Afficher l'URL complète des liens après le texte du lien */
-  a[href]:after {
+  /* Afficher l'URL complète des liens externes après le texte */
+  a[href^="http"]:after {
     content: " (" attr(href) ")";
     font-size: 9pt;
-    color: #333;
+    color: #555;
   }
   
-  /* Ne pas afficher l'URL pour les liens internes de navigation ou les boutons */
+  /* Ne pas afficher l'URL pour les liens internes ou les actions JavaScript */
   a[href^="#"]:after,
   a[href^="javascript:"]:after {
     content: "";
@@ -78,21 +84,33 @@
     page-break-after: avoid; /* Éviter un saut de page juste après un titre */
   }
 
-  table, figure {
-    page-break-inside: avoid; /* Éviter qu'un tableau ou une image soit coupé en deux */
+  table, figure, .card {
+    page-break-inside: avoid; /* Éviter qu'un tableau, une image ou une carte soit coupé en deux */
   }
   
   /* --- Styles spécifiques pour les documents (factures, devis) --- */
 
   /*
     Donnez cette classe au conteneur de votre document à imprimer
-    (ex: FacturePrintable.jsx)
+    (ex: un composant <FacturePrintView />)
   */
   .printable-document {
     width: 100%;
-    padding: 20mm 15mm; /* Marges typiques pour un A4 */
     box-shadow: none !important;
     border: none !important;
+    padding: 0;
   }
 
+  .printable-document .card-header,
+  .printable-document .card-body,
+  .printable-document .card-footer {
+    padding: 0 !important;
+    border: none !important;
+    background-color: transparent !important;
+  }
+
+  /* Rendre les boutons d'impression visibles s'ils existent */
+  .btn-print {
+    display: inline-block !important; /* Assurez-vous qu'ils soient visibles si besoin */
+  }
 }

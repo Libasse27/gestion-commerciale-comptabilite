@@ -18,15 +18,21 @@
 */
 
 
-/* --- Pour les tablettes et écrans plus petits (en dessous de 992px) --- */
+/* ==============================================================================
+   Pour les tablettes et écrans plus petits (en dessous de 992px)
+   Ici, la sidebar se cache et peut être affichée en mode "off-canvas".
+============================================================================== */
 @media (max-width: 991.98px) {
   .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1050; /* Doit être au-dessus de l'overlay */
+    
     /* Cache la sidebar par défaut sur les écrans de taille moyenne et inférieure */
     transform: translateX(-100%);
-    /*
-      On pourrait aussi utiliser `display: none;`, mais `transform` permet
-      de créer une animation de transition si on veut la faire réapparaître.
-    */
+    transition: transform 0.3s ease-in-out; /* Animation fluide */
   }
 
   .content-wrapper {
@@ -36,7 +42,7 @@
   }
   
   /*
-    Style pour une sidebar "ouverte" (à activer avec JavaScript).
+    Style pour une sidebar "ouverte" (à activer avec JavaScript en ajoutant la classe).
     Elle se superposera au contenu.
   */
   .sidebar.is-open {
@@ -55,7 +61,7 @@
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index: 999; /* Juste en dessous de la sidebar */
+    z-index: 1045; /* Juste en dessous de la sidebar */
     display: none; /* Caché par défaut */
   }
 
@@ -65,24 +71,28 @@
 }
 
 
-/* --- Pour les mobiles (en dessous de 768px) --- */
+/* ==============================================================================
+   Pour les mobiles (en dessous de 768px)
+   Ajustements fins pour les plus petits écrans.
+============================================================================== */
 @media (max-width: 767.98px) {
-  .content-main {
+  .page-header h1 {
+    font-size: 1.5rem; /* Réduire la taille des titres de page */
+  }
+
+  .main-content {
     padding: 1rem !important; /* Réduire le padding sur les très petits écrans */
   }
 
-  /* Cachez certains éléments qui prennent trop de place */
+  /* Cachez les éléments qui prennent trop de place et ne sont pas essentiels */
   .hide-on-mobile {
     display: none !important;
   }
   
-  /*
-    Exemple de style pour centrer des actions sur mobile.
-    .mobile-actions {
-      display: flex;
-      justify-content: center;
-      gap: 0.5rem;
-      margin-top: 1rem;
-    }
-  */
+  /* Rendre les tables scrollables horizontalement pour éviter de casser le layout */
+  .table-responsive-mobile {
+    overflow-x: auto;
+    display: block;
+    width: 100%;
+  }
 }

@@ -1,8 +1,8 @@
 // ==============================================================================
 //           Contrôleur pour la Gestion des Clients (CRUD & Actions)
 //
-// MISE À JOUR : Ajout d'une fonction pour l'export de la liste des clients
-// au format Excel (.xlsx).
+// MISE À JOUR : Utilisation complète de `APIFeatures` pour la recherche
+// et renvoi des métadonnées de pagination complètes.
 // ==============================================================================
 
 const Client = require('../../models/commercial/Client');
@@ -10,7 +10,7 @@ const AppError = require('../../utils/appError');
 const asyncHandler = require('../../utils/asyncHandler');
 const APIFeatures = require('../../utils/apiFeatures');
 const auditLogService = require('../../services/system/auditLogService');
-const excelService = require('../../services/exports/excelService'); // Import du service Excel
+const excelService = require('../../services/exports/excelService');
 const { AUDIT_LOG_ACTIONS } = require('../../utils/constants');
 
 /**
@@ -28,25 +28,45 @@ exports.createClient = asyncHandler(async (req, res, next) => {
   res.status(201).json({ status: 'success', data: { client: newClient } });
 });
 
+
 /**
- * @desc    Récupérer tous les clients (avec filtres, tri, pagination)
+ * @desc    Récupérer tous les clients (avec filtres, tri, recherche, pagination)
  * @route   GET /api/v1/clients
  */
 exports.getAllClients = asyncHandler(async (req, res, next) => {
-  const features = new APIFeatures(Client.find({ isActive: true }), req.query)
-    .filter().sort().limitFields().paginate();
+  const searchableFields = ['nom', 'codeClient', 'email', 'telephone'];
+  const baseQuery = Client.find({ isActive: true });
+
+  // 1. Obtenir le nombre total de documents qui correspondent aux filtres (AVANT la pagination)
+  const countFeatures = new APIFeatures(baseQuery.clone(), req.query)
+      .filter().search(searchableFields);
+  const totalClients = await countFeatures.query.countDocuments();
+
+  // 2. Appliquer toutes les fonctionnalités, y compris la pagination
+  const features = new APIFeatures(baseQuery, req.query)
+    .filter()
+    .sort()
+    .search(searchableFields)
+    .limitFields()
+    .paginate();
   
   const clients = await features.query.populate('creePar', 'firstName lastName');
 
-  // TODO: Ajouter un en-tête avec le nombre total de documents pour la pagination
-  // const total = await Client.countDocuments(features.query.getFilter());
-
+  // 3. Envoyer la réponse avec les métadonnées de pagination
+  const limit = parseInt(req.query.limit) || 10;
   res.status(200).json({
     status: 'success',
     results: clients.length,
+    pagination: {
+        total: totalClients,
+        limit: limit,
+        page: parseInt(req.query.page) || 1,
+        pages: Math.ceil(totalClients / limit),
+    },
     data: { clients },
   });
 });
+
 
 /**
  * @desc    Récupérer un client par son ID
@@ -60,6 +80,7 @@ exports.getClientById = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: { client } });
 });
 
+
 /**
  * @desc    Mettre à jour un client
  * @route   PATCH /api/v1/clients/:id
@@ -69,15 +90,14 @@ exports.updateClient = asyncHandler(async (req, res, next) => {
   if (!client) {
     return next(new AppError('Aucun client trouvé avec cet identifiant.', 404));
   }
-
   auditLogService.logAction({
     user: req.user.id, action: AUDIT_LOG_ACTIONS.UPDATE, entity: 'Client',
     entityId: client._id, status: 'SUCCESS', ipAddress: req.ip,
     details: { changes: req.body }
   });
-
   res.status(200).json({ status: 'success', data: { client } });
 });
+
 
 /**
  * @desc    Désactiver un client (soft delete)
@@ -88,12 +108,10 @@ exports.deleteClient = asyncHandler(async (req, res, next) => {
   if (!client) {
     return next(new AppError('Aucun client trouvé avec cet identifiant.', 404));
   }
-
   auditLogService.logAction({
     user: req.user.id, action: AUDIT_LOG_ACTIONS.DELETE, entity: 'Client',
     entityId: client._id, status: 'SUCCESS', ipAddress: req.ip,
   });
-
   res.status(204).json({ status: 'success', data: null });
 });
 
@@ -103,35 +121,21 @@ exports.deleteClient = asyncHandler(async (req, res, next) => {
  * @route   GET /api/v1/clients/export/excel
  */
 exports.exportClients = asyncHandler(async (req, res, next) => {
-    // 1. Récupérer toutes les données à exporter, en appliquant les mêmes filtres
-    //    que `getAllClients` mais SANS la pagination.
+    const searchableFields = ['nom', 'codeClient', 'email', 'telephone'];
     const features = new APIFeatures(Client.find({ isActive: true }), req.query)
-        .filter().sort().limitFields();
+        .filter().sort().search(searchableFields).limitFields();
 
     const clients = await features.query;
-    
-    // 2. Déléguer la création du fichier buffer au service Excel
     const excelBuffer = await excelService.exportClientsToExcel(clients);
-    
     const filename = `export-clients-${new Date().toISOString().split('T')[0]}.xlsx`;
     
-    // 3. Configurer les en-têtes de la réponse pour le téléchargement
-    res.setHeader(
-        'Content-Type',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    );
-    res.setHeader(
-        'Content-Disposition',
-        `attachment; filename=${filename}`
-    );
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
 
-    // 4. Logger l'action d'export
     auditLogService.logAction({
         user: req.user.id, action: AUDIT_LOG_ACTIONS.EXPORT, entity: 'Client',
-        status: 'SUCCESS', ipAddress: req.ip,
-        details: `Export de ${clients.length} clients.`
+        status: 'SUCCESS', ipAddress: req.ip, details: `Export de ${clients.length} clients.`
     });
 
-    // 5. Envoyer le buffer
     res.send(excelBuffer);
 });

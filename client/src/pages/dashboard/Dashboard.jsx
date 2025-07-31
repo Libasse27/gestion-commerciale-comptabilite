@@ -1,121 +1,109 @@
 // ==============================================================================
-//           Page Principale du Tableau de Bord
+//           Page Principale du Tableau de Bord (Version Finale Corrigée)
 //
-// Cette page est le point central de l'application après la connexion.
-// Elle affiche une vue d'ensemble de l'activité commerciale à travers des
-// indicateurs clés (KPIs) et des graphiques.
+// Rôle : Affiche une synthèse visuelle de l'activité commerciale et comptable.
 //
-// Elle orchestre la récupération des données en dispatchant les actions
-// du `dashboardSlice` et affiche les composants de visualisation.
+// CORRECTION CLÉ :
+// Le `useEffect` a été modifié pour n'exécuter l'appel API qu'une seule fois
+// au montage, ou si les données ont été explicitement réinitialisées.
+// Ceci corrige la boucle de rendu infinie qui causait les erreurs "429 Too Many Requests".
 // ==============================================================================
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Row, Col, Card } from 'react-bootstrap'
+import { Row, Col, Card } from 'react-bootstrap';
 
-// --- Importation des actions Redux ---
-import { fetchKpis, fetchVentesAnnuelles } from '../../store/slices/dashboardSlice'
-
-// --- Importation des composants de l'UI ---
-import StatCard from '../../components/charts/StatCard'
-import LineChart from '../../components/charts/LineChart'
-import BarChart from '../../components/charts/BarChart' // Exemple d'ajout
-import { formatCurrency } from '../../utils/currencyUtils'
-import { Cart4, PeopleFill, JournalText, CashStack } from 'react-bootstrap-icons'
+// --- Importations internes ---
+import { useAuth } from '../../hooks/useAuth';
+import { fetchDashboardData, resetDashboard } from '../../store/slices/dashboardSlice';
+import StatCard from '../../components/charts/StatCard';
+import LineChart from '../../components/charts/LineChart';
+import BarChart from '../../components/charts/BarChart';
+import Loader from '../../components/common/Loader';
+import AlertMessage from '../../components/common/AlertMessage'; // Composant à créer/utiliser
+import { formatCurrency } from '../../utils/currencyUtils';
+import { Cart4, PeopleFill, JournalText, CashStack } from 'react-bootstrap-icons';
 
 const DashboardPage = () => {
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
+  const { user } = useAuth();
 
-  // --- Lecture des données depuis le store Redux ---
-  const { kpis, ventesAnnuelles, isLoading, isError, message } = useSelector(
+  // On récupère l'état complet du slice. 'status' est la clé pour contrôler les appels.
+  const { kpis, ventesAnnuelles, status, isError, message } = useSelector(
     (state) => state.dashboard
-  )
-
-  // --- Déclenchement du chargement des données ---
-  // Le `useEffect` avec un tableau de dépendances vide `[]` s'exécute
-  // une seule fois, au premier rendu du composant.
-  useEffect(() => {
-    dispatch(fetchKpis())
-    dispatch(fetchVentesAnnuelles())
-  }, [dispatch])
-
-  // --- Transformation des données pour les graphiques ---
-  const salesChartData = {
-    labels: ventesAnnuelles.map(d =>
-      // Formate la date en "Mois Année" (ex: "Juil 24")
-      new Date(d.date).toLocaleString('fr-SN', { month: 'short', year: '2-digit' })
-    ),
-    datasets: [
-      {
-        label: "Chiffre d'Affaires",
-        data: ventesAnnuelles.map(d => d.chiffreAffaires),
-        borderColor: 'rgb(53, 162, 235)',
-        backgroundColor: 'rgba(53, 162, 235, 0.5)',
-        fill: true,
-        tension: 0.3,
-      },
-    ],
-  }
+  );
   
-  // Exemple de données pour un BarChart
-  const topProductsData = {
+  // --- CORRECTION DE LA BOUCLE INFINIE ---
+  useEffect(() => {
+    // On ne lance le chargement que si le statut est 'idle' (c'est-à-dire,
+    // à l'état initial ou après un reset).
+    // Cela empêche de relancer l'appel à chaque rendu.
+    if (status === 'idle') {
+      dispatch(fetchDashboardData());
+    }
+
+    // Le `return` d'un useEffect est une fonction de nettoyage.
+    // Elle sera exécutée lorsque le composant est "démonté".
+    // C'est une bonne pratique pour réinitialiser l'état si l'utilisateur
+    // quitte la page, afin que les données soient fraîches à son retour.
+    return () => {
+      // Optionnel : décommentez si vous voulez que les données se rechargent
+      // à chaque fois que l'utilisateur revient sur la page.
+      // dispatch(resetDashboard());
+    };
+  }, [status, dispatch]);
+
+  // --- Transformation des données pour les graphiques avec `useMemo` ---
+  // `useMemo` met en cache le résultat de cette fonction. Le calcul ne sera
+  // refait que si `ventesAnnuelles` change, ce qui optimise les performances.
+  const salesChartData = useMemo(() => {
+    // S'assurer que les données sont valides avant de les mapper
+    if (!Array.isArray(ventesAnnuelles) || ventesAnnuelles.length === 0) {
+      return { labels: [], datasets: [] };
+    }
+    const labels = ventesAnnuelles.map(d => new Date(d.date).toLocaleString('fr-SN', { month: 'short', year: '2-digit' }));
+    const dataPoints = ventesAnnuelles.map(d => d.chiffreAffaires);
+    return {
+      labels,
+      datasets: [{
+        label: "Chiffre d'Affaires (XOF)", data: dataPoints,
+        borderColor: 'rgb(53, 162, 235)', backgroundColor: 'rgba(53, 162, 235, 0.5)',
+        fill: true, tension: 0.3,
+      }],
+    };
+  }, [ventesAnnuelles]);
+  
+  // Données factices pour le deuxième graphique (à remplacer)
+  const topProductsData = useMemo(() => ({
       labels: ['Produit A', 'Produit B', 'Service C'],
       datasets: [{
-          label: 'Ventes',
-          data: [300, 150, 220],
+          label: 'Ventes (unités)', data: [300, 150, 220],
           backgroundColor: 'rgba(75, 192, 192, 0.6)'
       }]
-  };
+  }), []); // Tableau vide car les données sont statiques
 
+  // --- Gestion des différents états de l'UI ---
+  if (status === 'loading') {
+    return <Loader centered message="Chargement du tableau de bord..." />;
+  }
 
   if (isError) {
-    return <div className="alert alert-danger">Erreur de chargement du tableau de bord : {message}</div>
+    return <AlertMessage variant="danger" title="Erreur de chargement"> {message} </AlertMessage>;
   }
 
   return (
     <div>
-      <h1 className="mb-4">Tableau de Bord</h1>
+      <div className="mb-4">
+        <h1 className="mb-0">Bonjour, {user?.firstName || 'Utilisateur'} !</h1>
+        <p className="text-muted">Voici un aperçu de votre activité.</p>
+      </div>
 
       {/* --- Section des KPIs --- */}
       <Row className="g-4 mb-4">
-        <Col md={6} xl={3}>
-          <StatCard
-            icon={Cart4}
-            title="CA Aujourd'hui"
-            value={kpis.chiffreAffairesAujourdhui}
-            formatter={formatCurrency}
-            isLoading={isLoading}
-            iconVariant="primary"
-          />
-        </Col>
-        <Col md={6} xl={3}>
-          <StatCard
-            icon={PeopleFill}
-            title="Nouveaux Clients"
-            value={kpis.nouveauxClientsAujourdhui}
-            isLoading={isLoading}
-            iconVariant="success"
-          />
-        </Col>
-        <Col md={6} xl={3}>
-          <StatCard
-            icon={JournalText}
-            title="Devis en Attente"
-            value={kpis.devisEnAttente}
-            isLoading={isLoading}
-            iconVariant="warning"
-          />
-        </Col>
-        <Col md={6} xl={3}>
-          <StatCard
-            icon={CashStack}
-            title="Trésorerie"
-            value={kpis.tresorerie}
-            formatter={formatCurrency}
-            isLoading={isLoading}
-            iconVariant="info"
-          />
-        </Col>
+        <Col md={6} xl={3}><StatCard icon={Cart4} title="CA Aujourd'hui" value={kpis.chiffreAffairesAujourdhui} formatter={formatCurrency} iconVariant="primary" /></Col>
+        <Col md={6} xl={3}><StatCard icon={PeopleFill} title="Nouveaux Clients" value={kpis.nouveauxClientsAujourdhui} iconVariant="success" /></Col>
+        <Col md={6} xl={3}><StatCard icon={JournalText} title="Devis en Attente" value={kpis.devisEnAttente} iconVariant="warning" /></Col>
+        <Col md={6} xl={3}><StatCard icon={CashStack} title="Trésorerie" value={kpis.tresorerie} formatter={formatCurrency} iconVariant="info" /></Col>
       </Row>
 
       {/* --- Section des Graphiques --- */}
@@ -123,7 +111,7 @@ const DashboardPage = () => {
         <Col lg={8}>
           <Card className="shadow-sm border-0 h-100">
             <Card.Body>
-              <Card.Title>Évolution des Ventes</Card.Title>
+              <Card.Title>Évolution des Ventes (12 derniers mois)</Card.Title>
               <div style={{ height: '350px' }}>
                 <LineChart data={salesChartData} />
               </div>
@@ -142,7 +130,7 @@ const DashboardPage = () => {
         </Col>
       </Row>
     </div>
-  )
-}
+  );
+};
 
-export default DashboardPage
+export default DashboardPage;

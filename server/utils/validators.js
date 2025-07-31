@@ -17,6 +17,7 @@ const mongoose = require('mongoose');
  * @returns {boolean} `true` si l'ID est valide, sinon `false`.
  */
 const isMongoId = (id) => {
+  if (!id) return false;
   return mongoose.Types.ObjectId.isValid(id);
 };
 
@@ -53,20 +54,21 @@ const isValidSenegalPhone = (phone) => {
 
 /**
  * Valide un numéro NINEA (Numéro d'Identification National des Entreprises et des Associations) sénégalais.
- * Note : Ceci est une validation de format simple. Une validation réelle pourrait nécessiter un algorithme de clé de contrôle.
- * Exemple de format (à adapter) : 9 chiffres.
+ * Note : Ceci est une validation de format simple. Une validation réelle pourrait nécessiter un algorithme
+ * de clé de contrôle, mais cette vérification de format est suffisante pour la plupart des formulaires.
  * @param {string} ninea - Le numéro NINEA à valider.
  * @returns {boolean} `true` si le format est valide, sinon `false`.
  */
 const isValidNINEA = (ninea) => {
   if (!ninea) return false;
-  const nineaRegex = /^[0-9]{9}$/; // Exemple simple : 9 chiffres exactement
+  // Le format standard du NINEA est généralement composé de 9 chiffres.
+  const nineaRegex = /^[0-9]{9}$/;
   return nineaRegex.test(ninea);
 };
 
 /**
  * Vérifie si une valeur est un pourcentage valide (entre 0 et 100).
- * @param {number} value - La valeur à vérifier.
+ * @param {number | string} value - La valeur à vérifier.
  * @returns {boolean} `true` si c'est un pourcentage valide.
  */
 const isPercentage = (value) => {
@@ -76,7 +78,7 @@ const isPercentage = (value) => {
 
 /**
  * Vérifie si une valeur est un nombre strictement positif.
- * @param {number} value - La valeur à vérifier.
+ * @param {number | string} value - La valeur à vérifier.
  * @returns {boolean} `true` si la valeur est supérieure à 0.
  */
 const isGreaterThanZero = (value) => {

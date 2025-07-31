@@ -3,36 +3,38 @@
 //
 // Ce module contient des fonctions d'aide pour toutes les opérations liées
 // aux dates dans l'interface utilisateur. Il utilise `date-fns` pour des
-// manipulations fiables.
+// manipulations fiables et localisées.
 //
 // Fonctions incluses :
-// - Calculer un âge ou un délai.
-// - Formater une durée de manière lisible (ex: "il y a 2 heures").
+// - Formater une date de manière lisible (ex: "il y a 2 heures").
 // - Comparer des dates.
+// - Formater selon des patrons spécifiques.
 // ==============================================================================
 
 import {
   format,
-  formatDistanceToNow,
+  formatDistanceToNowStrict,
   parseISO,
   differenceInDays,
   isBefore,
   isAfter,
   isValid,
+  startOfToday,
 } from 'date-fns';
 import { fr } from 'date-fns/locale'; // Importe la locale française pour les formats lisibles
 
 /**
  * Formate une date de manière relative par rapport à maintenant.
  * @param {Date | string} date - La date à formater.
- * @returns {string} Une chaîne de caractères lisible (ex: "il y a environ 2 heures").
+ * @returns {string} Une chaîne de caractères lisible (ex: "il y a 2 heures").
  *
  * @example
- * formatToNow(subHours(new Date(), 2)) // "il y a environ 2 heures"
+ * formatToNow(subHours(new Date(), 2)) // "il y a 2 heures"
  */
 export const formatToNow = (date) => {
-  if (!date || !isValid(new Date(date))) return '';
-  return formatDistanceToNow(new Date(date), { addSuffix: true, locale: fr });
+  const d = date instanceof Date ? date : parseISO(date);
+  if (!isValid(d)) return '';
+  return formatDistanceToNowStrict(d, { addSuffix: true, locale: fr });
 };
 
 /**
@@ -41,8 +43,9 @@ export const formatToNow = (date) => {
  * @returns {number | null} Le nombre de jours restants (négatif si la date est passée).
  */
 export const daysUntil = (dueDate) => {
-  if (!dueDate || !isValid(new Date(dueDate))) return null;
-  return differenceInDays(new Date(dueDate), new Date());
+  const d = dueDate instanceof Date ? dueDate : parseISO(dueDate);
+  if (!isValid(d)) return null;
+  return differenceInDays(d, startOfToday());
 };
 
 /**
@@ -51,8 +54,9 @@ export const daysUntil = (dueDate) => {
  * @returns {boolean}
  */
 export const isPastDate = (date) => {
-  if (!date || !isValid(new Date(date))) return false;
-  return isBefore(new Date(date), new Date());
+  const d = date instanceof Date ? date : parseISO(date);
+  if (!isValid(d)) return false;
+  return isBefore(d, new Date());
 };
 
 /**
@@ -61,8 +65,9 @@ export const isPastDate = (date) => {
  * @returns {boolean}
  */
 export const isFutureDate = (date) => {
-  if (!date || !isValid(new Date(date))) return false;
-  return isAfter(new Date(date), new Date());
+  const d = date instanceof Date ? date : parseISO(date);
+  if (!isValid(d)) return false;
+  return isAfter(d, new Date());
 };
 
 /**
@@ -77,17 +82,18 @@ export const parseDateString = (isoString) => {
 };
 
 /**
- * Formate une date selon un format personnalisé.
- * Voir la documentation de date-fns pour tous les formats disponibles.
+ * Formate une date selon un format personnalisé, en utilisant la locale française.
+ * Voir la documentation de date-fns pour tous les formats disponibles: https://date-fns.org/v2/docs/format
  * @param {Date | string} date - La date à formater.
  * @param {string} [formatString='P'] - La chaîne de formatage (P = format de date local, ex: 21/05/2024).
  * @returns {string} La date formatée.
  *
  * @example
  * customFormat(new Date(), 'dd MMMM yyyy') // "21 mai 2024"
- * customFormat(new Date(), 'P p') // "21/05/2024, 15:30"
+ * customFormat(new Date(), 'P p') // "21/05/2024, 15:30:00"
  */
 export const customFormat = (date, formatString = 'P') => {
-    if (!date || !isValid(new Date(date))) return '';
-    return format(new Date(date), formatString, { locale: fr });
-}
+  const d = date instanceof Date ? date : parseISO(date);
+  if (!isValid(d)) return '';
+  return format(d, formatString, { locale: fr });
+};

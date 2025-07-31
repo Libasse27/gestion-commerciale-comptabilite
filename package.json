@@ -21,7 +21,11 @@
     "docker:dev": "docker compose up -d --build",
     "docker:stop": "docker compose down",
     "docker:logs": "docker compose logs -f",
-    "seed": "npm run seed --workspace=server"
+    "seed:compta": "node server/seeds/planComptable.js",
+    "seed:roles": "node server/seeds/roles.js",
+    "seed:users": "node server/seeds/users.js",
+    "seed:demo": "node server/seeds/demoData.js",
+    "seed:all": "npm run seed:roles && npm run seed:users && npm run seed:compta && npm run seed:demo"
   },
   "devDependencies": {
     "concurrently": "^9.2.0",

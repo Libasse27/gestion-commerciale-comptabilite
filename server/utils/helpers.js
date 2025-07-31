@@ -9,13 +9,15 @@
 // des services et contrôleurs concentré sur la logique métier.
 // ==============================================================================
 
+const { roundTo, ensureNumber } = require('./numberUtils'); // Importation pour la robustesse
+
 /**
  * Génère une chaîne de caractères aléatoire de la longueur spécifiée.
- * Utile pour créer des mots de passe temporaires, des tokens de réinitialisation, etc.
+ * Utile pour créer des mots de passe temporaires, des tokens, etc.
  * @param {number} length - La longueur de la chaîne à générer.
  * @returns {string} La chaîne aléatoire générée.
  */
-const generateRandomString = (length) => {
+const generateRandomString = (length = 10) => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
   for (let i = 0; i < length; i++) {
@@ -25,12 +27,12 @@ const generateRandomString = (length) => {
 };
 
 /**
- * Formate un nombre en devise XOF (Franc CFA) avec les séparateurs appropriés.
+ * Formate un nombre en devise XOF (Franc CFA) sans décimales.
  * @param {number} amount - Le montant à formater.
- * @returns {string} Le montant formaté (ex: "1 234 567 FCFA").
+ * @returns {string} Le montant formaté (ex: "1 235 FCFA").
  */
 const formatCurrencyXOF = (amount) => {
-  if (typeof amount !== 'number') return '0 FCFA';
+  if (typeof amount !== 'number' || isNaN(amount)) return '0 FCFA';
   return new Intl.NumberFormat('fr-SN', {
     style: 'currency',
     currency: 'XOF',
@@ -46,22 +48,32 @@ const formatCurrencyXOF = (amount) => {
  * @param {number} line.prixUnitaire - Le prix unitaire HT.
  * @param {number} [line.remise=0] - Le pourcentage de remise (ex: 10 pour 10%).
  * @param {number} [line.tva=18] - Le pourcentage de TVA (ex: 18 pour 18%).
- * @returns {{totalHT: number, totalTTC: number, montantTVA: number, montantRemise: number}} - Un objet avec les totaux calculés.
+ * @returns {{totalHT: number, totalTTC: number, montantTVA: number, montantRemise: number}}
  */
-const calculateLineTotals = ({ quantite, prixUnitaire, remise = 0, tva = 18 }) => {
-  const baseHT = quantite * prixUnitaire;
-  const montantRemise = baseHT * (remise / 100);
+const calculateLineTotals = (line) => {
+  const qte = ensureNumber(line.quantite, 1);
+  const pu = ensureNumber(line.prixUnitaire);
+  const tauxRemise = ensureNumber(line.remise);
+  const tauxTVA = ensureNumber(line.tva, 18);
+
+  const baseHT = qte * pu;
+  const montantRemise = baseHT * (tauxRemise / 100);
   const totalHT = baseHT - montantRemise;
-  const montantTVA = totalHT * (tva / 100);
+  const montantTVA = totalHT * (tauxTVA / 100);
   const totalTTC = totalHT + montantTVA;
 
-  return { totalHT, totalTTC, montantTVA, montantRemise };
+  return {
+    totalHT: roundTo(totalHT),
+    totalTTC: roundTo(totalTTC),
+    montantTVA: roundTo(montantTVA),
+    montantRemise: roundTo(montantRemise),
+  };
 };
 
 /**
- * Capitalise la première lettre d'une chaîne de caractères.
- * @param {string} str - La chaîne à capitaliser.
- * @returns {string} La chaîne capitalisée.
+ * Capitalise la première lettre d'une chaîne de caractères et met le reste en minuscules.
+ * @param {string} str - La chaîne à transformer.
+ * @returns {string} La chaîne formatée (ex: "pRENoM" -> "Prenom").
  */
 const capitalizeFirstLetter = (str) => {
   if (typeof str !== 'string' || str.length === 0) return '';
@@ -72,18 +84,21 @@ const capitalizeFirstLetter = (str) => {
  * Calcule un pourcentage d'avancement.
  * @param {number} current - La valeur actuelle.
  * @param {number} total - La valeur totale.
- * @returns {number} Le pourcentage (de 0 à 100).
+ * @returns {number} Le pourcentage arrondi (de 0 à 100).
  */
 const calculatePercentage = (current, total) => {
-  if (total === 0) return 0;
-  return Math.round((current / total) * 100);
+  const numCurrent = ensureNumber(current);
+  const numTotal = ensureNumber(total);
+
+  if (numTotal === 0) return 0;
+  return Math.round((numCurrent / numTotal) * 100);
 };
 
 /**
  * Supprime les propriétés null ou undefined d'un objet.
- * Utile avant une mise à jour pour ne pas écraser des champs existants avec des valeurs vides.
+ * Utile avant une mise à jour (PATCH) pour ne pas écraser des champs avec des valeurs vides.
  * @param {object} obj - L'objet à nettoyer.
- * @returns {object} L'objet nettoyé.
+ * @returns {object} Un nouvel objet sans les propriétés nulles ou indéfinies.
  */
 const removeNullOrUndefinedProps = (obj) => {
   const newObj = {};

@@ -1,18 +1,13 @@
 // ==============================================================================
 //                  Hook Personnalisé : useAuth
 //
-// Ce hook est une façade ("facade") qui simplifie l'accès à l'état
-// d'authentification stocké dans le store Redux.
+// Ce hook agit comme une "façade" pour le slice d'authentification de Redux.
+// Il fournit un accès simple et centralisé à l'état d'authentification
+// (utilisateur, token, état de chargement) et à des valeurs dérivées
+// pratiques comme `isAuthenticated`.
 //
-// Au lieu d'utiliser `useSelector` dans chaque composant pour extraire les
-// différentes parties du slice `auth`, les composants peuvent simplement
-// appeler `useAuth()` pour obtenir un objet clair avec toutes les
-// informations nécessaires.
-//
-// Avantages :
-//   - Simplifie le code des composants.
-//   - Découple les composants de la structure interne du store Redux.
-//   - Centralise la logique de sélection de l'état d'authentification.
+// Cela permet aux composants de consommer l'état d'auth sans connaître
+// la structure interne du store Redux.
 // ==============================================================================
 
 import { useMemo } from 'react';
@@ -23,34 +18,41 @@ import { useSelector } from 'react-redux';
  * @returns {{
  *  user: object | null,
  *  token: string | null,
+ *  status: ('idle'|'loading'|'succeeded'|'failed'),
  *  isAuthenticated: boolean,
  *  isLoading: boolean,
- *  isError: boolean,
  *  isSuccess: boolean,
- *  message: string
- * }} Un objet contenant l'état d'authentification.
+ *  isError: boolean,
+ *  message: string,
+ *  permissions: Set<string>
+ * }} Un objet contenant l'état d'authentification complet.
  */
 export const useAuth = () => {
   // Sélectionne le slice 'auth' entier depuis le store Redux.
-  const { user, token, isLoading, isError, isSuccess, message } = useSelector(
+  const { user, token, status, isSuccess, isError, message } = useSelector(
     (state) => state.auth
   );
 
-  // `useMemo` est utilisé ici comme une optimisation.
-  // Il s'assure que l'objet retourné par le hook ne change de référence
-  // que si l'une de ses valeurs a réellement changé. Cela peut éviter
-  // des re-rendus inutiles dans les composants qui consomment ce hook.
+  // `useMemo` est utilisé pour optimiser les re-rendus.
+  // L'objet retourné ne changera de référence que si une de ses
+  // dépendances (dans le tableau de dépendances) a réellement changé.
   return useMemo(
     () => ({
       user,
       token,
-      isLoading,
-      isError,
+      status: status || 'idle', // Fournit 'idle' par défaut
       isSuccess,
+      isError,
       message,
-      // On peut ajouter ici des valeurs dérivées pratiques.
+      // Les permissions sont stockées dans l'objet user, on les expose ici
+      // sous forme de Set pour des vérifications rapides (O(1)).
+      permissions: new Set(user?.permissions || []),
+
+      // --- Valeurs dérivées pour la simplicité d'utilisation ---
+      isLoading: status === 'loading',
+      // `isAuthenticated` est vrai uniquement si on a un user et un token.
       isAuthenticated: !!user && !!token,
     }),
-    [user, token, isLoading, isError, isSuccess, message]
+    [user, token, status, isSuccess, isError, message]
   );
 };

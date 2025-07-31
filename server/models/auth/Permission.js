@@ -1,15 +1,12 @@
 // ==============================================================================
 //                Modèle Mongoose pour les Permissions
 //
-// Ce modèle représente une permission unitaire et granulaire dans le système.
-// C'est la brique de base du système de contrôle d'accès basé sur les rôles (RBAC).
+// Ce modèle définit une permission unitaire au sein de l'application. Une
+// permission représente une action unique et granulaire, comme "créer un client",
+// "lire une facture", ou "supprimer un utilisateur".
 //
-// Exemples de permissions :
-// - 'create:produit' -> Droit de créer un nouveau produit.
-// - 'read:facture' -> Droit de consulter les factures.
-// - 'update:client' -> Droit de modifier la fiche d'un client.
-// - 'delete:user' -> Droit de supprimer un utilisateur (typiquement pour Admin).
-//
+// Les permissions sont ensuite regroupées et assignées à des Rôles pour
+// définir les droits d'accès.
 // ==============================================================================
 
 const mongoose = require('mongoose');
@@ -21,26 +18,38 @@ const permissionSchema = new mongoose.Schema(
   {
     /**
      * Le nom unique de la permission, suivant une convention claire.
-     * Convention recommandée : 'action:ressource' (ex: 'create:produit').
-     * L'option `unique: true` crée automatiquement un index unique sur ce champ.
+     * Convention recommandée : "sujet:action" (ex: "client:create", "facture:read").
      */
     name: {
       type: String,
       required: [true, 'Le nom de la permission est obligatoire.'],
       unique: true,
       trim: true,
-      description: "Nom unique de la permission, ex: 'create:produit'",
+      match: [
+        /^[a-z_]+:[a-z_]+$/,
+        'Le format de la permission doit être "sujet:action" (ex: client:create)',
+      ],
+      description: 'Identifiant unique de la permission (ex: "client:create")',
     },
 
     /**
      * Une description lisible de ce que la permission autorise.
-     * Utile pour l'affichage dans une interface d'administration des rôles.
      */
     description: {
       type: String,
-      required: false,
       trim: true,
-      description: 'Description de la permission',
+      required: false,
+      description: 'Description de ce que la permission permet de faire',
+    },
+
+    /**
+     * Un champ de groupement pour organiser les permissions dans l'interface utilisateur.
+     */
+    group: {
+      type: String,
+      required: [true, "Le groupe de la permission est obligatoire."],
+      trim: true,
+      description: 'Module de regroupement pour l\'UI (ex: "Clients")',
     },
   },
   {
@@ -53,15 +62,18 @@ const permissionSchema = new mongoose.Schema(
   }
 );
 
-/*
- * La déclaration manuelle de l'index ci-dessous a été supprimée car l'option
- * `unique: true` sur le champ 'name' s'en charge déjà.
+/**
+ * Création d'un index sur le champ 'group' pour optimiser les requêtes
+ * qui cherchent à regrouper les permissions par catégorie.
  */
-// permissionSchema.index({ name: 1 });
+permissionSchema.index({ group: 1 });
 
 /**
- * Création du modèle 'Permission' à partir du schéma.
+ * ✅ MISE À JOUR APPLIQUÉE
+ * On vérifie si le modèle 'Permission' a déjà été compilé avant de le créer.
+ * Cela évite l'erreur "OverwriteModelError" lors du rechargement à chaud (hot-reload),
+ * rendant le code plus robuste en environnement de développement.
  */
-const Permission = mongoose.model('Permission', permissionSchema);
+const Permission = mongoose.models.Permission || mongoose.model('Permission', permissionSchema);
 
 module.exports = Permission;

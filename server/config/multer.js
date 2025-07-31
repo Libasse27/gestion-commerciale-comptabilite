@@ -24,7 +24,7 @@ const fs = require('fs');
 // Chemin où les fichiers seront stockés localement (pour uploadToDisk)
 const UPLOAD_DIRECTORY = process.env.UPLOAD_PATH || './uploads';
 
-// S'assurer que le dossier d'upload existe
+// S'assurer que le dossier d'upload existe pour éviter les erreurs
 if (!fs.existsSync(UPLOAD_DIRECTORY)) {
   fs.mkdirSync(UPLOAD_DIRECTORY, { recursive: true });
 }
@@ -39,6 +39,7 @@ const fileFilter = (req, file, cb) => {
     'image/jpeg',
     'image/png',
     'image/gif',
+    'image/webp',
     // Documents
     'application/pdf',
     'application/msword', // .doc
@@ -53,7 +54,9 @@ const fileFilter = (req, file, cb) => {
     cb(null, true);
   } else {
     // Rejeter le fichier en créant une erreur que le middleware de gestion d'erreurs pourra attraper.
-    cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'Type de fichier non supporté.'), false);
+    const error = new Error('Type de fichier non supporté. Formats acceptés : images, PDF, Word, Excel, CSV.');
+    error.code = 'LIMIT_UNEXPECTED_FILE';
+    cb(error, false);
   }
 };
 
@@ -69,7 +72,8 @@ const diskStorage = multer.diskStorage({
     cb(null, UPLOAD_DIRECTORY);
   },
   filename: (req, file, cb) => {
-    const fieldName = file.fieldname;
+    // Génère un nom de fichier unique pour éviter les collisions
+    const fieldName = file.fieldname.replace(/[^a-zA-Z0-9]/g, '_'); // Nettoyage du nom de champ
     const timestamp = Date.now();
     const extension = path.extname(file.originalname);
     cb(null, `${fieldName}-${timestamp}${extension}`);

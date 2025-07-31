@@ -28,43 +28,55 @@ async function getNextNumero(typeDocument) {
   let config = await Numerotation.findOne({ typeDocument });
 
   if (!config) {
-    // Si aucune configuration n'existe, on en crée une par défaut.
-    // C'est une sécurité, mais idéalement les configs sont créées via un seeder ou une interface.
     logger.warn(`Aucune configuration de numérotation trouvée pour '${typeDocument}'. Création d'une configuration par défaut.`);
     config = new Numerotation({
       typeDocument,
       prefixe: typeDocument.substring(0, 3).toUpperCase(),
+      format: '{PREFIX}-{AAAA}-{SEQ}',
+      longueurSequence: 5,
+      resetSequence: 'Aucune',
+      derniereSequence: 0,
     });
+    await config.save(); // Important : on sauvegarde la config créée
   }
 
   const now = new Date();
   const anneeActuelle = now.getFullYear();
   const moisActuel = now.getMonth() + 1;
-  let sequenceActuelle = config.derniereSequence;
+
+  // Valeurs de fallback si absentes
+  config.format = config.format || '{PREFIX}-{AAAA}-{SEQ}';
+  config.longueurSequence = config.longueurSequence || 5;
+  config.resetSequence = config.resetSequence || 'Aucune';
 
   // --- 2. Gérer la réinitialisation de la séquence (annuelle/mensuelle) ---
   let reset = false;
   if (config.resetSequence === 'Annuelle' && config.derniereAnneeReset !== anneeActuelle) {
-    sequenceActuelle = 0;
     config.derniereAnneeReset = anneeActuelle;
+    config.dernierMoisReset = moisActuel;
     reset = true;
-  } else if (config.resetSequence === 'Mensuelle' && (config.derniereAnneeReset !== anneeActuelle || config.dernierMoisReset !== moisActuel)) {
-    sequenceActuelle = 0;
+  } else if (config.resetSequence === 'Mensuelle' &&
+            (config.derniereAnneeReset !== anneeActuelle || config.dernierMoisReset !== moisActuel)) {
     config.derniereAnneeReset = anneeActuelle;
     config.dernierMoisReset = moisActuel;
     reset = true;
   }
-  
+
   // --- 3. Incrémenter la séquence de manière atomique ---
-  // Si on reset, on met la séquence à 1. Sinon, on l'incrémente.
   const updateOperation = reset
-    ? { $set: { derniereSequence: 1, derniereAnneeReset: config.derniereAnneeReset, dernierMoisReset: config.dernierMoisReset } }
+    ? {
+        $set: {
+          derniereSequence: 1,
+          derniereAnneeReset: config.derniereAnneeReset,
+          dernierMoisReset: config.dernierMoisReset,
+        },
+      }
     : { $inc: { derniereSequence: 1 } };
-    
+
   const updatedConfig = await Numerotation.findOneAndUpdate(
-      { typeDocument },
-      updateOperation,
-      { new: true, upsert: true }
+    { typeDocument },
+    updateOperation,
+    { new: true, upsert: true }
   );
 
   // --- 4. Formater le numéro final ---

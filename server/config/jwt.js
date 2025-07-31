@@ -54,6 +54,8 @@ const verifyAccessToken = (token) => {
   try {
     return jwt.verify(token, process.env.JWT_SECRET);
   } catch (error) {
+    // Les erreurs (TokenExpiredError, JsonWebTokenError) sont gérées en retournant null.
+    // Le code appelant saura que le token est invalide.
     return null;
   }
 };

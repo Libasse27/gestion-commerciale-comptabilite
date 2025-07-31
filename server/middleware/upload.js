@@ -29,20 +29,22 @@ function handleSingleUpload(storageType, fieldName) {
       // Gère les erreurs spécifiques à Multer
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
+          // Note: err.limit n'est pas disponible ici, il faut se référer à la config
           return res.status(400).json({
-            message: `Le fichier est trop volumineux. La taille maximale est de ${err.limit / 1024 / 1024}MB.`,
+            status: 'fail',
+            message: `Le fichier est trop volumineux. La taille maximale autorisée est de ${process.env.MAX_FILE_SIZE / 1024 / 1024}MB.`,
           });
         }
         if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-          return res.status(400).json({ message: 'Type de fichier non supporté.' });
+          return res.status(400).json({ status: 'fail', message: 'Type de fichier non supporté.' });
         }
         // Gérer d'autres erreurs Multer si nécessaire
-        return res.status(400).json({ message: `Erreur d'upload: ${err.message}` });
+        return res.status(400).json({ status: 'fail', message: `Erreur d'upload: ${err.message}` });
       } else if (err) {
-        // Gère d'autres erreurs non liées à Multer
-        return res.status(500).json({
-          message: 'Une erreur interne est survenue lors du téléversement du fichier.',
-          error: err.message,
+        // Gère d'autres erreurs non liées à Multer (ex: notre erreur custom de fileFilter)
+        return res.status(400).json({
+          status: 'fail',
+          message: err.message,
         });
       }
 
@@ -67,14 +69,14 @@ function handleMultipleUploads(storageType, fieldName, maxCount) {
         uploader(req, res, (err) => {
              if (err instanceof multer.MulterError) {
                 if (err.code === 'LIMIT_FILE_SIZE') {
-                    return res.status(400).json({ message: `Un des fichiers est trop volumineux.` });
+                    return res.status(400).json({ status: 'fail', message: `Un des fichiers est trop volumineux.` });
                 }
                 if (err.code === 'LIMIT_FILE_COUNT') {
-                    return res.status(400).json({ message: `Vous ne pouvez téléverser que ${maxCount} fichiers au maximum.` });
+                    return res.status(400).json({ status: 'fail', message: `Vous ne pouvez téléverser que ${maxCount} fichiers au maximum.` });
                 }
-                return res.status(400).json({ message: `Erreur d'upload: ${err.message}` });
+                return res.status(400).json({ status: 'fail', message: `Erreur d'upload: ${err.message}` });
             } else if (err) {
-                return res.status(500).json({ message: 'Une erreur interne est survenue lors du téléversement des fichiers.' });
+                return res.status(400).json({ status: 'fail', message: err.message });
             }
             next();
         });

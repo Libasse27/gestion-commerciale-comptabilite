@@ -18,9 +18,6 @@ const roleSchema = new mongoose.Schema(
   {
     /**
      * Le nom unique du rôle.
-     * Contraint par une énumération définie dans les constantes de l'application
-     * pour garantir la cohérence.
-     * L'option `unique: true` crée automatiquement un index unique sur ce champ.
      */
     name: {
       type: String,
@@ -28,7 +25,7 @@ const roleSchema = new mongoose.Schema(
       unique: true,
       enum: {
         values: Object.values(USER_ROLES),
-        message: 'La valeur {VALUE} n\'est pas un rôle supporté.',
+        message: "La valeur {VALUE} n'est pas un rôle supporté.",
       },
       description: 'Nom unique du rôle (Admin, Comptable, etc.)',
     },
@@ -45,7 +42,6 @@ const roleSchema = new mongoose.Schema(
 
     /**
      * Un tableau de références vers les documents 'Permission'.
-     * C'est ici que l'on définit ce que le rôle a le droit de faire.
      */
     permissions: [
       {
@@ -64,15 +60,12 @@ const roleSchema = new mongoose.Schema(
   }
 );
 
-/*
- * La déclaration manuelle de l'index ci-dessous a été supprimée car l'option
- * `unique: true` sur le champ 'name' s'en charge déjà.
- */
-// roleSchema.index({ name: 1 });
-
 /**
- * Création du modèle 'Role' à partir du schéma.
+ * ✅ MISE À JOUR APPLIQUÉE
+ * On vérifie si le modèle 'Role' a déjà été compilé avant de le créer.
+ * Cette protection est indispensable pour éviter les erreurs lors du rechargement
+ * à chaud du serveur en mode développement.
  */
-const Role = mongoose.model('Role', roleSchema);
+const Role = mongoose.models.Role || mongoose.model('Role', roleSchema);
 
 module.exports = Role;

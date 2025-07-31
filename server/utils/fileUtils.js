@@ -54,10 +54,11 @@ const ensureDirectoryExists = async (dirPath) => {
  */
 const safeDeleteFile = async (filePath) => {
   try {
-    if (await pathExists(filePath)) {
-      await fs.unlink(filePath);
-      // console.log(`Fichier supprimé: ${filePath}`);
-    }
+    // La vérification de l'existence n'est pas nécessaire avec l'option force de fs.rm
+    // await fs.unlink(filePath); est aussi une option mais échoue si le fichier n'existe pas.
+    // fs.rm est plus moderne et flexible.
+    await fs.rm(filePath, { force: true });
+    // console.log(`Fichier supprimé: ${filePath}`);
   } catch (error) {
     console.error(`Erreur lors de la suppression du fichier ${filePath}:`, error);
   }
@@ -73,6 +74,10 @@ const readFileContent = async (filePath) => {
     const content = await fs.readFile(filePath, { encoding: 'utf-8' });
     return content;
   } catch (error) {
+    // Si l'erreur est que le fichier n'existe pas, c'est une information, pas une erreur critique.
+    if (error.code === 'ENOENT') {
+      return null;
+    }
     console.error(`Erreur lors de la lecture du fichier ${filePath}:`, error);
     return null;
   }

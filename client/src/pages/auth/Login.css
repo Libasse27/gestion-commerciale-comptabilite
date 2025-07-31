@@ -1,0 +1,560 @@
+/* ==============================================================================
+   Styles pour la Page de Connexion (Login.css)
+   Application ERP Sénégal
+   
+   DESCRIPTION : Styles personnalisés pour améliorer l'apparence de la page
+   de connexion avec des animations, des effets de survol et une interface moderne.
+============================================================================== */
+
+/* Variables CSS personnalisées */
+:root {
+  --login-primary-color: #0d6efd;
+  --login-secondary-color: #6c757d;
+  --login-success-color: #198754;
+  --login-danger-color: #dc3545;
+  --login-warning-color: #ffc107;
+  --login-light-bg: #f8f9fa;
+  --login-shadow-color: rgba(0, 0, 0, 0.15);
+  --login-border-radius: 12px;
+  --login-transition: all 0.3s ease;
+}
+
+/* ==============================================================================
+   Conteneur principal de la page de connexion
+============================================================================== */
+.login-container {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* Alternative avec image de fond (décommentez si vous avez une image) */
+/*
+.login-container {
+  background-image: url('../assets/images/login-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+*/
+
+/* ==============================================================================
+   Carte de connexion
+============================================================================== */
+.login-card {
+  backdrop-filter: blur(15px);
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: var(--login-border-radius);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: var(--login-transition);
+  animation: slideInUp 0.8s ease-out;
+  position: relative;
+  z-index: 1;
+  max-width: 400px;
+  width: 100%;
+}
+
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border-radius: var(--login-border-radius);
+  pointer-events: none;
+}
+
+.login-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 35px 70px rgba(0, 0, 0, 0.25);
+}
+
+/* ==============================================================================
+   En-tête de la carte
+============================================================================== */
+.login-header h2 {
+  color: var(--login-primary-color);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 2;
+  font-size: 2rem;
+  background: linear-gradient(45deg, var(--login-primary-color), #4dabf7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.login-header p {
+  color: var(--login-secondary-color);
+  font-size: 1rem;
+  margin-bottom: 0;
+  position: relative;
+  z-index: 2;
+  font-weight: 500;
+}
+
+/* ==============================================================================
+   Styles des formulaires
+============================================================================== */
+.login-form .form-label {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+/* Groupes d'input avec icônes */
+.login-form .input-group {
+  border-radius: 8px;
+  overflow: hidden;
+  transition: var(--login-transition);
+}
+
+.login-form .input-group:focus-within {
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+  transform: scale(1.02);
+}
+
+/* Texte des icônes dans les inputs */
+.login-form .input-group-text {
+  background-color: var(--login-primary-color);
+  color: white;
+  border: none;
+  padding: 12px 15px;
+  font-size: 1.1rem;
+}
+
+/* Champs de saisie */
+.login-form .form-control {
+  border: 2px solid #e9ecef;
+  padding: 12px 15px;
+  font-size: 1rem;
+  transition: var(--login-transition);
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.login-form .form-control:focus {
+  border-color: var(--login-primary-color);
+  box-shadow: none;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.login-form .form-control:disabled {
+  background-color: #f8f9fa !important;
+  color: #6c757d !important;
+  opacity: 0.7;
+}
+
+.login-form .form-control::placeholder {
+  color: #6c757d !important;
+  opacity: 0.7;
+}
+
+/* Bouton pour afficher/masquer le mot de passe */
+.password-toggle-btn {
+  border-left: 2px solid var(--login-primary-color) !important;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-color: var(--login-primary-color) !important;
+  color: var(--login-primary-color);
+  transition: var(--login-transition);
+  border-radius: 0 6px 6px 0;
+  padding: 12px 15px;
+  position: relative;
+  overflow: hidden;
+}
+
+.password-toggle-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(13, 110, 253, 0.1), transparent);
+  transition: left 0.3s ease;
+}
+
+.password-toggle-btn:hover {
+  background: var(--login-primary-color);
+  color: white;
+  border-color: var(--login-primary-color);
+  transform: scale(1.05);
+}
+
+.password-toggle-btn:hover::before {
+  left: 100%;
+}
+
+.password-toggle-btn:focus {
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+  outline: none;
+}
+
+.password-toggle-btn:disabled {
+  opacity: 0.6;
+  transform: none;
+}
+
+/* ==============================================================================
+   Bouton de connexion
+============================================================================== */
+.login-btn {
+  background: linear-gradient(45deg, var(--login-primary-color), #4dabf7);
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: var(--login-transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.login-btn:hover::before {
+  left: 100%;
+}
+
+.login-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(13, 110, 253, 0.4);
+}
+
+.login-btn:active {
+  transform: translateY(0);
+}
+
+.login-btn:disabled {
+  background: var(--login-secondary-color);
+  transform: none;
+  box-shadow: none;
+}
+
+/* ==============================================================================
+   Liens de navigation
+============================================================================== */
+.login-links {
+  border-top: 1px solid #e9ecef;
+  padding-top: 1rem;
+  margin-top: 1.5rem;
+}
+
+.login-links a {
+  color: var(--login-primary-color);
+  text-decoration: none;
+  font-weight: 500;
+  transition: var(--login-transition);
+  position: relative;
+}
+
+.login-links a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background-color: var(--login-primary-color);
+  transition: width 0.3s ease;
+}
+
+.login-links a:hover {
+  color: #0a58ca;
+}
+
+.login-links a:hover::after {
+  width: 100%;
+}
+
+/* Séparateur entre les liens */
+.login-links .separator {
+  margin: 0 10px;
+  color: var(--login-secondary-color);
+}
+
+/* ==============================================================================
+   Animations
+============================================================================== */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(50px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 15px rgba(13, 110, 253, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+/* Animation pour le loader */
+.login-loading {
+  animation: pulse 2s infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+/* ==============================================================================
+   États d'erreur et de succès
+============================================================================== */
+.form-control.is-invalid {
+  border-color: var(--login-danger-color);
+  animation: shake 0.5s ease-in-out;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.form-control.is-valid {
+  border-color: var(--login-success-color);
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* ==============================================================================
+   Responsive Design
+============================================================================== */
+@media (max-width: 768px) {
+  .login-container {
+    padding: 10px;
+  }
+  
+  .login-card {
+    width: 100% !important;
+    max-width: 400px;
+    margin: 20px;
+  }
+  
+  .login-header h2 {
+    font-size: 1.5rem;
+  }
+  
+  .login-form .form-control,
+  .login-form .input-group-text {
+    padding: 10px 12px;
+  }
+  
+  .login-btn {
+    font-size: 1rem;
+    padding: 10px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  .login-links {
+    text-align: center;
+  }
+  
+  .login-links a {
+    display: block;
+    margin: 5px 0;
+  }
+  
+  .login-links .separator {
+    display: none;
+  }
+}
+
+/* ==============================================================================
+   Mode sombre (optionnel)
+============================================================================== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --login-light-bg: #212529;
+    --login-shadow-color: rgba(0, 0, 0, 0.3);
+  }
+  
+  .login-card {
+    background: rgba(33, 37, 41, 0.95);
+    color: #fff;
+  }
+  
+  /* Les champs de texte restent blancs avec texte noir même en mode sombre */
+  .login-form .form-control {
+    background-color: #ffffff !important;
+    border-color: #495057;
+    color: #000000 !important;
+  }
+  
+  .login-form .form-control:focus {
+    background-color: #ffffff !important;
+    border-color: var(--login-primary-color);
+    color: #000000 !important;
+  }
+  
+  .login-form .form-control::placeholder {
+    color: #6c757d !important;
+    opacity: 0.7;
+  }
+}
+
+/* ==============================================================================
+   Utilitaires supplémentaires
+============================================================================== */
+.login-forgot-password {
+  font-size: 0.875rem;
+  margin-top: 1rem;
+}
+
+.login-social-buttons {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(233, 236, 239, 0.5);
+}
+
+.login-social-buttons .btn {
+  transition: var(--login-transition);
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.login-social-buttons .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.login-divider {
+  position: relative;
+  text-align: center;
+  margin: 1.5rem 0;
+  font-size: 0.875rem;
+  color: var(--login-secondary-color);
+}
+
+.login-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(233, 236, 239, 0.8),
+    transparent
+  );
+}
+
+.login-divider span {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0 1.5rem;
+  color: var(--login-secondary-color);
+  font-weight: 500;
+  position: relative;
+  z-index: 1;
+}
+
+/* Effets de particules flottantes (optionnel) */
+.login-container::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(2px 2px at 160px 30px, rgba(255, 255, 255, 0.3), transparent);
+  background-repeat: repeat;
+  background-size: 200px 100px;
+  animation: float 20s linear infinite;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px) translateX(0px);
+  }
+  33% {
+    transform: translateY(-10px) translateX(10px);
+  }
+  66% {
+    transform: translateY(5px) translateX(-5px);
+  }
+  100% {
+    transform: translateY(0px) translateX(0px);
+  }
+}

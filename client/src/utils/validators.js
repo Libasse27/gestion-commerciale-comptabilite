@@ -16,7 +16,7 @@
  * @returns {string | undefined} Un message d'erreur si la valeur est vide, sinon undefined.
  */
 export const isRequired = (value) => {
-  return value && value.toString().trim().length > 0
+  return value && String(value).trim().length > 0
     ? undefined
     : 'Ce champ est obligatoire.';
 };
@@ -31,7 +31,7 @@ export const isValidEmail = (email) => {
   const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,4})+$/;
   return emailRegex.test(email)
     ? undefined
-    : 'Le format de l\'adresse email est invalide.';
+    : "Le format de l'adresse email est invalide.";
 };
 
 /**
@@ -46,7 +46,7 @@ export const minLength = (min) => (value) => {
 };
 
 /**
- * Valide la force d'un mot de passe.
+ * Valide la force d'un mot de passe de manière détaillée.
  * @param {string} password - Le mot de passe à valider.
  * @returns {string | undefined} Un message d'erreur si le mot de passe n'est pas assez fort.
  */
@@ -73,13 +73,13 @@ export const isStrongPassword = (password) => {
  */
 export const isValidSenegalPhone = (phone) => {
   if (!phone) return undefined;
-  const phoneStr = phone.toString().replace(/\s+/g, '');
+  const phoneStr = String(phone).replace(/\s+/g, '');
   const validPrefixes = ['77', '78', '76', '70', '75'];
   const phoneRegex = new RegExp(`^(${validPrefixes.join('|')})\\d{7}$`);
 
   return phoneRegex.test(phoneStr)
     ? undefined
-    : 'Doit être un numéro de téléphone sénégalais valide (ex: 77 123 45 67).';
+    : 'Doit être un numéro sénégalais valide (ex: 77 123 45 67).';
 };
 
 /**
@@ -88,14 +88,14 @@ export const isValidSenegalPhone = (phone) => {
  * @returns {string | undefined} Un message d'erreur si invalide.
  */
 export const isPositiveNumber = (value) => {
-    const num = Number(value);
+    const num = Number(String(value).replace(',', '.')); // Gère la virgule
     return !isNaN(num) && num > 0
         ? undefined
         : 'La valeur doit être un nombre supérieur à zéro.'
 }
 
 /**
- * Compose plusieurs fonctions de validation.
+ * Compose plusieurs fonctions de validation en une seule.
  * Exécute les validateurs en séquence et retourne le premier message d'erreur trouvé.
  * @param  {...function} validators - Les fonctions de validation à composer.
  * @returns {function(*): (string | undefined)} Une unique fonction de validation.

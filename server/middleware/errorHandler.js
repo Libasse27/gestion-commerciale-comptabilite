@@ -17,7 +17,7 @@ const AppError = require('../utils/appError');
  * @returns {AppError} Une nouvelle AppError formatée.
  */
 const handleCastErrorDB = (err) => {
-  const message = `Ressource invalide ${err.path}: ${err.value}.`;
+  const message = `Ressource invalide. Le format du champ ${err.path} est incorrect.`;
   return new AppError(message, 400);
 };
 
@@ -80,7 +80,7 @@ const sendErrorProd = (err, res) => {
       message: err.message,
     });
   }
-  
+
   // B) Erreurs de programmation ou autres erreurs inconnues : ne pas fuiter les détails
   // 1) Logger l'erreur pour les développeurs
   console.error('ERREUR 💥', err);
@@ -100,14 +100,14 @@ module.exports = (err, req, res, next) => {
     sendErrorDev(err, res);
   } else if (process.env.NODE_ENV === 'production') {
     // Crée une copie de l'erreur pour éviter de modifier l'original
-    let error = { ...err, name: err.name, message: err.message };
+    let error = { ...err, name: err.name, message: err.message, code: err.code };
 
     if (error.name === 'CastError') error = handleCastErrorDB(error);
     if (error.code === 11000) error = handleDuplicateFieldsDB(error);
     if (error.name === 'ValidationError') error = handleValidationErrorDB(error);
     if (error.name === 'JsonWebTokenError') error = handleJWTError();
     if (error.name === 'TokenExpiredError') error = handleJWTExpiredError();
-    
+
     sendErrorProd(error, res);
   }
 };

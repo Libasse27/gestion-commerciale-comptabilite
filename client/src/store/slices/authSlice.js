@@ -1,57 +1,47 @@
 // ==============================================================================
-//           Slice Redux pour la Gestion de l'Authentification (Version Finale)
+//           Slice Redux pour la Gestion de l'Authentification
 //
-// Gère l'intégralité du cycle de vie de l'authentification.
-// La logique de réinitialisation des états (isSuccess, isError) est maintenant
-// gérée automatiquement par le matcher '/pending', ce qui évite les boucles
-// de rendu infinies dans les composants.
+// Ce slice est la SEULE source de vérité pour l'état d'authentification.
+// Toute interaction avec le localStorage (lecture, écriture, suppression)
+// est gérée ICI et NULLE PART AILLEURS, en réponse aux actions.
 // ==============================================================================
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import authService from '../../services/authService';
-import { getErrorMessage } from '../../utils/helpers';
+import { getErrorMessage, getFromLocalStorage, saveToLocalStorage, removeFromLocalStorage } from '../../utils/helpers';
 import { LOCAL_STORAGE_KEYS } from '../../utils/constants';
 
 // --- État Initial ---
-const getUserFromStorage = () => {
-  try {
-    const userString = localStorage.getItem(LOCAL_STORAGE_KEYS.USER_INFO);
-    if (userString && userString !== 'undefined') return JSON.parse(userString);
-    return null;
-  } catch (error) {
-    return null;
-  }
-};
-const user = getUserFromStorage();
-const token = localStorage.getItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN);
+// L'état initial est lu directement depuis le localStorage.
+const userInfoFromStorage = getFromLocalStorage(LOCAL_STORAGE_KEYS.USER_INFO);
 
 const initialState = {
-  user: user || null,
-  token: token || null,
-  isLoading: false,
+  user: userInfoFromStorage ? userInfoFromStorage : null,
+  token: userInfoFromStorage ? userInfoFromStorage.token : null,
+  status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
   isSuccess: false,
   isError: false,
   message: '',
 };
 
-
 // --- Thunks Asynchrones ---
-export const register = createAsyncThunk('auth/register', async (userData, thunkAPI) => {
+// Chaque thunk délègue l'appel API au service et gère les erreurs.
+export const registerUser = createAsyncThunk('auth/register', async (userData, thunkAPI) => {
   try { return await authService.register(userData); }
   catch (error) { return thunkAPI.rejectWithValue(getErrorMessage(error)); }
 });
 
-export const login = createAsyncThunk('auth/login', async (credentials, thunkAPI) => {
+export const loginUser = createAsyncThunk('auth/login', async (credentials, thunkAPI) => {
   try { return await authService.login(credentials); }
   catch (error) { return thunkAPI.rejectWithValue(getErrorMessage(error)); }
 });
 
-export const forgotPassword = createAsyncThunk('auth/forgotPassword', async (email, thunkAPI) => {
+export const requestPasswordReset = createAsyncThunk('auth/forgotPassword', async (email, thunkAPI) => {
   try { return await authService.requestPasswordReset(email); }
   catch (error) { return thunkAPI.rejectWithValue(getErrorMessage(error)); }
 });
 
-export const resetPassword = createAsyncThunk('auth/resetPassword', async (data, thunkAPI) => {
+export const resetUserPassword = createAsyncThunk('auth/resetPassword', async (data, thunkAPI) => {
   try { return await authService.resetPassword(data.token, data.password); }
   catch (error) { return thunkAPI.rejectWithValue(getErrorMessage(error)); }
 });
@@ -62,78 +52,78 @@ export const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    // Action manuelle pour réinitialiser les états, si nécessaire dans un composant.
+    // Action pour réinitialiser les états temporaires (isSuccess, isError, etc.)
     reset: (state) => {
+      state.status = 'idle';
       state.isSuccess = false;
       state.isError = false;
       state.message = '';
     },
+    // Action de déconnexion
     logout: (state) => {
       state.user = null;
       state.token = null;
-    },
-    tokenRefreshed: (state, action) => {
-      state.token = action.payload.accessToken;
+      state.status = 'idle';
+      removeFromLocalStorage(LOCAL_STORAGE_KEYS.USER_INFO);
     },
   },
   extraReducers: (builder) => {
     builder
-      // --- Cas spécifiques pour les succès (`fulfilled`) ---
-      .addCase(register.fulfilled, (state, action) => {
-        state.isSuccess = true;
-        state.user = action.payload.data.user;
-        state.token = action.payload.accessToken;
-      })
-      .addCase(login.fulfilled, (state, action) => {
-        state.isSuccess = true;
-        state.user = action.payload.data.user;
-        state.token = action.payload.accessToken;
-      })
-      .addCase(forgotPassword.fulfilled, (state, action) => {
+      // --- Cas de succès spécifiques (qui ne modifient pas l'état d'auth) ---
+      .addCase(requestPasswordReset.fulfilled, (state, action) => {
         state.isSuccess = true;
         state.message = action.payload.message;
       })
-      .addCase(resetPassword.fulfilled, (state, action) => {
+      .addCase(resetUserPassword.fulfilled, (state, action) => {
         state.isSuccess = true;
         state.message = action.payload.message;
       })
 
-      // --- Cas génériques pour tous les Thunks ---
-      // NOTE: Les matchers doivent être à la fin.
+      // --- Cas génériques via `addMatcher` pour éviter la duplication ---
       .addMatcher(
-        (action) => action.type.endsWith('/pending'),
+        (action) => action.type.startsWith('auth/') && action.type.endsWith('/pending'),
         (state) => {
-          // Au début de chaque appel, on met isLoading à true
-          // et on réinitialise les états de succès/erreur.
-          state.isLoading = true;
+          state.status = 'loading';
           state.isSuccess = false;
           state.isError = false;
           state.message = '';
         }
       )
       .addMatcher(
-        (action) => action.type.endsWith('/fulfilled'),
-        (state) => {
-          // À la fin de chaque appel réussi, on remet isLoading à false.
-          state.isLoading = false;
+        // Cible uniquement les actions de login et register réussies
+        (action) => action.type === loginUser.fulfilled.type || action.type === registerUser.fulfilled.type,
+        (state, action) => {
+          const user = action.payload.user;
+          const token = action.payload.accessToken;
+
+          // Créer l'objet à stocker
+          const userInfo = { ...user, token };
+
+          // Mettre à jour l'état Redux
+          state.status = 'succeeded';
+          state.isSuccess = true;
+          state.user = user;
+          state.token = token;
+
+          // Mettre à jour le localStorage
+          saveToLocalStorage(LOCAL_STORAGE_KEYS.USER_INFO, userInfo);
         }
       )
       .addMatcher(
-        (action) => action.type.endsWith('/rejected'),
+        (action) => action.type.startsWith('auth/') && action.type.endsWith('/rejected'),
         (state, action) => {
-          // À la fin de chaque appel échoué, on stocke l'erreur.
-          state.isLoading = false;
+          state.status = 'failed';
           state.isError = true;
-          state.message = action.payload;
-          // En cas d'échec d'authentification, on s'assure que l'utilisateur est déconnecté.
-          if (action.type.startsWith('auth/')) {
-            state.user = null;
-            state.token = null;
-          }
+          state.message = action.payload; // Le message vient de rejectWithValue
+          state.user = null;
+          state.token = null;
+
+          // Nettoyer le localStorage en cas d'échec d'authentification
+          removeFromLocalStorage(LOCAL_STORAGE_KEYS.USER_INFO);
         }
       );
   },
 });
 
-export const { reset, logout, tokenRefreshed } = authSlice.actions;
+export const { reset, logout } = authSlice.actions;
 export default authSlice.reducer;

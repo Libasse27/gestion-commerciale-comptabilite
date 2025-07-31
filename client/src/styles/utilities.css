@@ -5,7 +5,8 @@
    effectuent une seule tâche. Elles sont utiles pour appliquer rapidement
    des styles courants sans avoir à écrire du CSS en ligne.
    
-   Elles complètent les classes utilitaires de Bootstrap.
+   Elles complètent les classes utilitaires de Bootstrap et sont souvent
+   indépendantes du thème.
 ============================================================================== */
 
 /* --- Curseurs --- */
@@ -18,73 +19,55 @@
 .cursor-help {
   cursor: help;
 }
+.cursor-move {
+  cursor: move;
+}
 
 
 /* --- Taille de Police --- */
 .font-sm {
-  font-size: 0.875rem; /* 14px */
+  font-size: 0.875rem !important; /* 14px */
 }
 .font-xs {
-  font-size: 0.75rem; /* 12px */
+  font-size: 0.75rem !important; /* 12px */
 }
 
 
 /* --- Transitions --- */
-.transition-all {
-  transition: all var(--transition-speed-fast) var(--transition-timing-function);
+.transition-fast {
+  transition: all 0.2s ease-in-out;
 }
 
 
-/* --- Ombres (basées sur le thème) --- */
-.shadow-sm {
-  box-shadow: var(--shadow-sm);
-}
-.shadow-md {
-  box-shadow: var(--shadow-md);
-}
-
-
-/* --- Couleurs de Texte (basées sur le thème) --- */
-.text-primary-theme {
-  color: var(--color-primary);
-}
-.text-secondary-theme {
-  color: var(--color-text-secondary);
-}
-
-
-/* --- Couleurs de Fond "Light" (Nouveau) --- */
+/* --- Couleurs de Fond "Light" --- */
 /*
   Utile pour les fonds d'icônes, les badges légers, etc.
   Utilise les variables --bs-*-rgb définies dans bootstrap-custom.css
-  pour créer une couleur avec une transparence.
+  pour créer une couleur avec une transparence de 10%.
 */
 .bg-primary-light {
   background-color: rgba(var(--bs-primary-rgb), 0.1);
+  color: var(--bs-primary);
 }
 .bg-secondary-light {
   background-color: rgba(var(--bs-secondary-rgb), 0.1);
+  color: var(--bs-secondary);
 }
 .bg-success-light {
   background-color: rgba(var(--bs-success-rgb), 0.1);
+  color: var(--bs-success);
 }
 .bg-warning-light {
   background-color: rgba(var(--bs-warning-rgb), 0.1);
+  color: var(--bs-warning);
 }
 .bg-danger-light {
   background-color: rgba(var(--bs-danger-rgb), 0.1);
+  color: var(--bs-danger);
 }
 .bg-info-light {
   background-color: rgba(var(--bs-info-rgb), 0.1);
-}
-
-
-/* --- Hauteur Minimale --- */
-.min-h-100 {
-  min-height: 100px;
-}
-.min-h-200 {
-  min-height: 200px;
+  color: var(--bs-info);
 }
 
 
@@ -98,9 +81,10 @@
   height: 40px;
   border-radius: 50%;
   overflow: hidden;
-  background-color: var(--color-secondary);
+  background-color: var(--bs-secondary);
   color: #fff;
-  font-weight: bold;
+  font-weight: 500;
+  flex-shrink: 0; /* Empêche l'avatar de se rétrécir dans un flex container */
 }
 .avatar img {
   width: 100%;
@@ -115,13 +99,33 @@
   width: 64px;
   height: 64px;
 }
+.avatar-xl {
+  width: 96px;
+  height: 96px;
+}
 
 
-/* --- Style pour les Cartes de Statistique (Nouveau) --- */
+/* --- Style pour les Cartes de Statistique (Widgets de Dashboard) --- */
 .stat-card-icon {
   width: 50px;
   height: 50px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
+}
+
+
+/* --- Autres Utilitaires --- */
+
+/* Pour les images qui doivent couvrir leur conteneur */
+.img-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Pour forcer une hauteur à 100% de la fenêtre visible */
+.min-vh-100 {
+  min-height: 100vh;
 }

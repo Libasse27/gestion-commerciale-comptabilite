@@ -1,62 +1,79 @@
 // ==============================================================================
 //           Service pour les Appels API du Tableau de Bord
 //
-// Ce service encapsule toutes les interactions avec les points de terminaison
-// (endpoints) de l'API qui fournissent des données agrégées pour les
-// tableaux de bord et les rapports.
+// Rôle : Ce fichier centralise tous les appels API liés à la récupération
+// des données pour les différents tableaux de bord de l'application.
 //
-// Chaque fonction correspond à une route spécifique du `statistiquesController`
-// et utilise `apiClient` pour effectuer les requêtes.
+// MISE À JOUR : Ajout de la gestion d'erreurs (try/catch) pour rendre
+// le service plus robuste et faciliter le débogage.
 // ==============================================================================
 
 import apiClient from './api';
 
 /**
- * Récupère les indicateurs de performance clés (KPIs) pour le tableau de bord principal.
- * @returns {Promise<object>} Un objet contenant les KPIs (chiffreAffairesAujourdhui, etc.).
+ * [OPTIMISÉ] Récupère toutes les données nécessaires pour le tableau de bord
+ * principal en un seul appel API. Cet endpoint est la méthode préférée.
+ * @throws {Error} Relance l'erreur API si l'appel échoue, pour que createAsyncThunk puisse la gérer.
+ * @returns {Promise<object>} Un objet contenant toutes les données du dashboard.
+ */
+const getMainDashboardData = async () => {
+  try {
+    // Cet endpoint unique est géré par `dashboardController.js` côté backend
+    const response = await apiClient.get('/dashboard/main');
+    
+    // La convention est de retourner la propriété `data` de la réponse Axios.
+    // Le contrôleur backend devrait renvoyer un objet contenant toutes les données.
+    return response.data.data;
+  } catch (error) {
+    // On log l'erreur pour un débogage facile côté client
+    console.error("Erreur lors de la récupération des données du dashboard principal :", error.response?.data || error.message);
+    // On relance l'erreur pour que le `createAsyncThunk` qui a appelé ce service
+    // puisse passer dans son état `rejected`. C'est crucial.
+    throw error;
+  }
+};
+
+// --- Fonctions Individuelles (gardées pour des cas d'usage spécifiques) ---
+// Note : Ces fonctions créent des appels réseau supplémentaires.
+// À n'utiliser que si une fonctionnalité nécessite de rafraîchir
+// une seule partie du tableau de bord (ex: un bouton "Rafraîchir les KPIs").
+
+/**
+ * Récupère les indicateurs de performance clés (KPIs) uniquement.
+ * @throws {Error} Relance l'erreur API si l'appel échoue.
+ * @returns {Promise<object>} L'objet contenant les KPIs.
  */
 const getKpisCommerciaux = async () => {
-  // Le token d'authentification et les permissions sont gérés par le backend.
-  // L'intercepteur d'apiClient ajoutera le token automatiquement.
-  const response = await apiClient.get('/statistiques/kpis-commerciaux');
-  
-  // L'API renvoie { status: 'success', data: { kpis: {...} } }
-  // On retourne directement l'objet kpis pour simplifier l'utilisation dans le slice.
-  return response.data.data.kpis;
+  try {
+    const response = await apiClient.get('/kpis/commerciaux');
+    return response.data.data.kpis || {};
+  } catch (error) {
+    console.error("Erreur lors de la récupération des KPIs commerciaux :", error.response?.data || error.message);
+    throw error;
+  }
 };
 
 /**
  * Récupère les données des ventes mensuelles sur les 12 derniers mois.
- * @returns {Promise<Array<object>>} Un tableau d'objets { date, chiffreAffaires }.
+ * @throws {Error} Relance l'erreur API si l'appel échoue.
+ * @returns {Promise<Array<object>>}
  */
 const getVentesAnnuelles = async () => {
-  const response = await apiClient.get('/statistiques/ventes-annuelles');
-  // L'API renvoie { status: 'success', data: { ventesMensuelles: [...] } }
-  return response.data.data.ventesMensuelles;
+  try {
+    const response = await apiClient.get('/statistiques/ventes-annuelles');
+    return response.data.data.ventesMensuelles || [];
+  } catch (error) {
+    console.error("Erreur lors de la récupération des ventes annuelles :", error.response?.data || error.message);
+    throw error;
+  }
 };
 
-/**
- * Récupère le top 5 des clients par chiffre d'affaires.
- * @returns {Promise<Array<object>>} Un tableau d'objets { client, ca }.
- */
-const getTopClients = async () => {
-    // Supposons que vous ayez une route /statistiques/top-clients
-    // const response = await apiClient.get('/statistiques/top-clients');
-    // return response.data.data.topClients;
-    
-    // Pour l'instant, retournons des données factices
-    return [
-        { client: 'Client A', ca: 5800000 },
-        { client: 'Client B', ca: 4500000 },
-        { client: 'Client C', ca: 3200000 },
-    ];
-};
 
-// On exporte un objet contenant toutes les fonctions du service
+// On exporte un objet contenant toutes les fonctions du service.
 const dashboardService = {
+  getMainDashboardData,
   getKpisCommerciaux,
   getVentesAnnuelles,
-  getTopClients,
 };
 
 export default dashboardService;

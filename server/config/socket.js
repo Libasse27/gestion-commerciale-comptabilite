@@ -12,9 +12,9 @@
 
 const { Server } = require('socket.io');
 const { verifyAccessToken } = require('./jwt'); // Notre utilitaire JWT
-const User = require('../models/auth/User');     // Le modèle User pour récupérer les infos
+const User = require('../models/auth/User');     // Le modèle User pour vérifier l'existence
 
-let io; // Instance de Socket.IO qui sera partagée
+let io; // Instance de Socket.IO qui sera partagée à travers l'application
 
 /**
  * Initialise le serveur Socket.IO et l'attache au serveur HTTP.
@@ -29,25 +29,26 @@ const initSocket = (httpServer) => {
   });
 
   // --- Middleware d'Authentification pour Socket.IO ---
-  // S'exécute pour chaque nouvelle tentative de connexion.
+  // S'exécute pour chaque nouvelle tentative de connexion WebSocket.
   io.use(async (socket, next) => {
     try {
-      // Le token JWT doit être envoyé par le client lors de la connexion
+      // Le token JWT doit être envoyé par le client dans le paquet d'authentification
       const token = socket.handshake.auth.token;
 
       if (!token) {
         return next(new Error('Authentication error: Token manquant.'));
       }
 
+      // On utilise notre utilitaire pour vérifier le token
       const decoded = verifyAccessToken(token);
       if (!decoded || !decoded.id) {
         return next(new Error('Authentication error: Token invalide ou expiré.'));
       }
 
-      // Vérifier que l'utilisateur existe toujours dans la base de données
-      const user = await User.findById(decoded.id).select('firstName lastName email');
-      if (!user) {
-        return next(new Error('Authentication error: Utilisateur non trouvé.'));
+      // Vérifier que l'utilisateur existe toujours et n'est pas inactif
+      const user = await User.findById(decoded.id).select('firstName lastName email isActive');
+      if (!user || !user.isActive) {
+        return next(new Error('Authentication error: Utilisateur non trouvé ou inactif.'));
       }
 
       // Attacher les informations de l'utilisateur à l'objet socket pour un usage ultérieur
@@ -64,10 +65,11 @@ const initSocket = (httpServer) => {
   io.on('connection', (socket) => {
     console.log(`✅ Utilisateur connecté via WebSocket: ${socket.user.firstName} (ID de socket: ${socket.id})`);
 
-    // Chaque utilisateur rejoint une "room" privée portant son propre ID.
-    // Cela permet de lui envoyer des notifications de manière ciblée.
-    socket.join(socket.user._id.toString());
-    console.log(`   > ${socket.user.firstName} a rejoint la room privée: ${socket.user._id.toString()}`);
+    // Chaque utilisateur rejoint une "room" privée portant son propre ID MongoDB.
+    // Cela permet de lui envoyer des notifications de manière ciblée et sécurisée.
+    const userRoom = socket.user._id.toString();
+    socket.join(userRoom);
+    console.log(`   > ${socket.user.firstName} a rejoint la room privée: ${userRoom}`);
 
     // Gérer la déconnexion
     socket.on('disconnect', () => {
@@ -80,7 +82,7 @@ const initSocket = (httpServer) => {
 };
 
 /**
- * Récupère l'instance de Socket.IO initialisée.
+ * Récupère l'instance de Socket.IO initialisée pour l'utiliser ailleurs dans l'app.
  * @returns {Server} L'instance du serveur IO.
  */
 const getIO = () => {
