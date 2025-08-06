@@ -38,6 +38,7 @@ import FactureDetailPage from '../pages/ventes/FactureDetail';
 import BonLivraisonPage from '../pages/ventes/BonLivraison'; 
 import CommandesAchatPage from '../pages/achats/CommandesAchat';
 import FacturesAchatPage from '../pages/achats/FacturesAchat';
+import ReceptionsPage from '../pages/achats/Receptions';
 import NotFoundPage from '../pages/errors/NotFound';
 
 const Placeholder = ({ title }) => <h2 className="p-4">{title} - À construire</h2>;
@@ -107,6 +108,7 @@ const AppRoutes = () => {
           <Route path="/parametres" element={<Placeholder title="Paramètres" />} />
           <Route path="/achats/commandes" element={<CommandesAchatPage />} />
           <Route path="/achats/factures" element={<FacturesAchatPage />} />
+          <Route path="/achats/receptions" element={<ReceptionsPage />} />
 
           {/* --- Placeholders --- */}
           
