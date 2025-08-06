@@ -1,0 +1,35 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "C:\\Users\\libas\\Desktop\\PROJET_DE_FIN_FORMATION_GOMYCODE\\projet-gestion-commerciale-comptabilite\\server\\logs\\.ab85695d8ef6b537a9781b83f159efad4637f24b-audit.json",
+    "files": [
+        {
+            "date": 1754147191563,
+            "name": "C:\\Users\\libas\\Desktop\\PROJET_DE_FIN_FORMATION_GOMYCODE\\projet-gestion-commerciale-comptabilite\\server\\logs\\application-2025-08-02.log",
+            "hash": "77a0653c7ac2560e5f07faaf4b33398c66ecb1fbc02254385bdd36f41e885d6c"
+        },
+        {
+            "date": 1754186400064,
+            "name": "C:\\Users\\libas\\Desktop\\PROJET_DE_FIN_FORMATION_GOMYCODE\\projet-gestion-commerciale-comptabilite\\server\\logs\\application-2025-08-03.log",
+            "hash": "42dd3cddf1692d0782c06e060cc3877c323aeb71bbb6551f108375b475269905"
+        },
+        {
+            "date": 1754270225383,
+            "name": "C:\\Users\\libas\\Desktop\\PROJET_DE_FIN_FORMATION_GOMYCODE\\projet-gestion-commerciale-comptabilite\\server\\logs\\application-2025-08-04.log",
+            "hash": "f7340b9c4269d6c7346c8e507ad3dd3fb7013ad8783bb3e5e6e15f0636d9e8a4"
+        },
+        {
+            "date": 1754388962465,
+            "name": "C:\\Users\\libas\\Desktop\\PROJET_DE_FIN_FORMATION_GOMYCODE\\projet-gestion-commerciale-comptabilite\\server\\logs\\application-2025-08-05.log",
+            "hash": "99918be2f7c8c591b998d493ab6d5e85ffe7fe2d5d9c2d9742311f1836fde988"
+        },
+        {
+            "date": 1754438933585,
+            "name": "C:\\Users\\libas\\Desktop\\PROJET_DE_FIN_FORMATION_GOMYCODE\\projet-gestion-commerciale-comptabilite\\server\\logs\\application-2025-08-06.log",
+            "hash": "43f63f03695eae267fd010e56eebc26d171f0e0a2783ee628e79a92410f7bf3e"
+        }
+    ],
+    "hashType": "sha256"
+}

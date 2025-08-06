@@ -1,79 +1,95 @@
+// server/routes/auth.js
 // ==============================================================================
 //           Routeur pour l'Authentification (/api/v1/auth)
 //
-// Ce fichier définit toutes les routes liées au processus d'authentification
-// et d'initialisation du système. Chaque route est protégée par les
-// middlewares appropriés (limitation de taux, validation, authentification).
+// Définit les routes pour l'inscription, la connexion, la déconnexion,
+// et la gestion des mots de passe.
 // ==============================================================================
 
 const express = require('express');
 const { body } = require('express-validator');
 
-// --- Importation des Contrôleurs ---
 const authController = require('../controllers/auth/authController');
-
-// --- Importation des Middlewares ---
 const { authLimiter } = require('../middleware/rateLimiter');
 const { handleValidationErrors } = require('../middleware/validation');
-const { protect } = require('../middleware/auth'); // Renommé pour la clarté
+const { protect } = require('../middleware/auth');
 const { isStrongPassword } = require('../utils/validators');
 
-
-// --- Initialisation du Routeur ---
 const router = express.Router();
 
+// --- ROUTES PUBLIQUES (protégées par un rate limiter strict) ---
 
-// ==================================================
-// --- 1. ROUTE D'INITIALISATION DU SYSTÈME      ---
-// ==================================================
-// Route spéciale qui ne doit être appelée qu'une seule fois.
-router.post(
-    '/initialize',
-    authLimiter, // Protège contre les abus sur cette route critique
-    authController.initializeSystem // Le nom de la fonction a été mis à jour
-);
-
-
-// ==================================================
-// --- 2. ROUTES PUBLIQUES (Authentification)     ---
-// ==================================================
-
-// Inscription d'un nouvel utilisateur
 router.post(
   '/register',
-  authLimiter, // Appliquer le limiteur ici aussi
+  authLimiter,
   [
-    body('firstName', 'Le prénom est requis').trim().not().isEmpty(),
-    body('lastName', 'Le nom de famille est requis').trim().not().isEmpty(),
+    body('firstName', 'Le prénom est requis').trim().notEmpty(),
+    body('lastName', 'Le nom de famille est requis').trim().notEmpty(),
     body('email', 'Veuillez fournir un email valide').isEmail().normalizeEmail(),
-    body('password')
-      .custom(isStrongPassword)
-      .withMessage('Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.'),
+    body('password').custom((value) => {
+      if (!isStrongPassword(value)) {
+        throw new Error('Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.');
+      }
+      return true;
+    }),
   ],
-  handleValidationErrors, // Gère les erreurs de la chaîne de validation ci-dessus
+  handleValidationErrors,
   authController.register
 );
 
-// Connexion
-router.post('/login', authLimiter, authController.login);
+router.post(
+    '/login', 
+    authLimiter,
+    [
+        body('email', 'L\'email est requis.').notEmpty(),
+        body('password', 'Le mot de passe est requis.').notEmpty(),
+    ],
+    handleValidationErrors,
+    authController.login
+);
 
-// Rafraîchissement du token d'accès via le cookie httpOnly
 router.post('/refresh-token', authController.refreshToken);
 
-// Demande de réinitialisation de mot de passe
-router.post('/forgot-password', authLimiter, authController.forgotPassword);
+router.post(
+    '/forgot-password', 
+    authLimiter,
+    [ body('email', 'Veuillez fournir un email valide').isEmail().normalizeEmail() ],
+    handleValidationErrors,
+    authController.forgotPassword
+);
 
-// Réinitialisation effective du mot de passe avec le token
-router.patch('/reset-password/:token', authController.resetPassword);
+router.patch(
+    '/reset-password/:token',
+    authLimiter,
+    [ body('password').custom((value) => {
+        if (!isStrongPassword(value)) {
+          throw new Error('Le nouveau mot de passe ne respecte pas les critères de sécurité.');
+        }
+        return true;
+      })
+    ],
+    handleValidationErrors,
+    authController.resetPassword
+);
 
+// --- ROUTES PRIVÉES (nécessitent d'être connecté) ---
+router.use(protect); // Tout ce qui est en dessous est maintenant protégé
 
-// ==================================================
-// --- 3. ROUTES PRIVÉES (Nécessitent une session) ---
-// ==================================================
+router.post('/logout', authController.logout);
 
-// Déconnexion
-router.post('/logout', protect, authController.logout);
+router.patch(
+    '/update-my-password',
+    [
+        body('currentPassword', 'Le mot de passe actuel est requis.').notEmpty(),
+        body('newPassword').custom((value) => {
+            if (!isStrongPassword(value)) {
+              throw new Error('Le nouveau mot de passe ne respecte pas les critères de sécurité.');
+            }
+            return true;
+          })
+    ],
+    handleValidationErrors,
+    authController.updateMyPassword
+);
 
-
-// --- Exportation du Routeur ---
 module.exports = router;

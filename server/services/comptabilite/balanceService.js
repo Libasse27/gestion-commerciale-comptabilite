@@ -1,98 +1,64 @@
-// ==============================================================================
-//           Service pour le Calcul des Balances Comptables
-//
-// Ce service contient la logique métier pour générer des balances comptables
-// (générale, tiers) sur une période donnée.
-//
-// Il utilise le "Aggregation Framework" de MongoDB pour agréger les données
-// des écritures comptables de manière performante.
-// ==============================================================================
-
+// server/services/comptabilite/balanceService.js
 const EcritureComptable = require('../../models/comptabilite/EcritureComptable');
 const CompteComptable = require('../../models/comptabilite/CompteComptable');
 const AppError = require('../../utils/appError');
+const mongoose = require('mongoose');
+const { roundTo } = require('../../utils/numberUtils');
 
-/**
- * Génère la balance comptable générale pour une période donnée.
- *
- * @param {object} params - Paramètres de la balance.
- * @param {Date} params.dateDebut - Date de début de la période.
- * @param {Date} params.dateFin - Date de fin de la période.
- * @param {boolean} [params.inclureComptesNonMouvementes=true] - Inclure les comptes sans mouvement.
- * @returns {Promise<Array<object>>} Un tableau d'objets représentant les lignes de la balance.
- */
-async function genererBalanceGenerale({ dateDebut, dateFin, inclureComptesNonMouvementes = true }) {
-  if (!dateDebut || !dateFin) {
-    throw new AppError('Veuillez fournir une date de début et une date de fin.', 400);
+async function genererBalanceGenerale({ dateDebut, dateFin }) {
+  const debut = new Date(dateDebut);
+  const fin = new Date(dateFin);
+
+  if (!debut || !fin || debut >= fin) {
+    throw new AppError('Veuillez fournir une période de dates valide.', 400);
   }
 
-  // --- Étape 1: Agréger les mouvements de la période ---
-  const mouvements = await EcritureComptable.aggregate([
-    // 1a. Filtrer les écritures validées dans la période
-    {
-      $match: {
-        statut: 'Validée',
-        date: { $gte: new Date(dateDebut), $lte: new Date(dateFin) }
-      }
-    },
-    // 1b. "Dénormaliser" le tableau de lignes pour avoir un document par ligne d'écriture
+  const pipeline = [
     { $unwind: '$lignes' },
-    // 1c. Grouper par compte et sommer les débits et crédits
+    { $lookup: { from: 'comptabilite_plan', localField: 'lignes.compte', foreignField: '_id', as: 'compteInfo' } },
+    { $unwind: '$compteInfo' },
     {
       $group: {
         _id: '$lignes.compte',
-        totalDebit: { $sum: '$lignes.debit' },
-        totalCredit: { $sum: '$lignes.credit' }
+        numero: { $first: '$compteInfo.numero' },
+        libelle: { $first: '$compteInfo.libelle' },
+        debitOuverture: { $sum: { $cond: [{ $lt: ['$date', debut] }, '$lignes.debit', 0] } },
+        creditOuverture: { $sum: { $cond: [{ $lt: ['$date', debut] }, '$lignes.credit', 0] } },
+        debitMouvement: { $sum: { $cond: [{ $and: [{ $gte: ['$date', debut] }, { $lte: ['$date', fin] }] }, '$lignes.debit', 0] } },
+        creditMouvement: { $sum: { $cond: [{ $and: [{ $gte: ['$date', debut] }, { $lte: ['$date', fin] }] }, '$lignes.credit', 0] } },
       }
-    }
-  ]);
+    },
+    {
+      $project: {
+        _id: 0, numero: 1, libelle: 1,
+        soldeDebitOuverture: { $cond: [{ $gt: ['$debitOuverture', '$creditOuverture'] }, { $subtract: ['$debitOuverture', '$creditOuverture'] }, 0] },
+        soldeCreditOuverture: { $cond: [{ $lt: ['$debitOuverture', '$creditOuverture'] }, { $subtract: ['$creditOuverture', '$debitOuverture'] }, 0] },
+        debitMouvement: 1, creditMouvement: 1,
+        soldeDebitFinal: { $let: { vars: { solde: { $add: [{ $subtract: ['$debitOuverture', '$creditOuverture'] }, { $subtract: ['$debitMouvement', '$creditMouvement'] }] } }, in: { $cond: [{ $gt: ['$$solde', 0] }, '$$solde', 0] } } },
+        soldeCreditFinal: { $let: { vars: { solde: { $add: [{ $subtract: ['$debitOuverture', '$creditOuverture'] }, { $subtract: ['$debitMouvement', '$creditMouvement'] }] } }, in: { $cond: [{ $lt: ['$$solde', 0] }, { $multiply: ['$$solde', -1] }, 0] } } },
+      }
+    },
+    { $match: { $or: [ { soldeDebitOuverture: { $ne: 0 } }, { soldeCreditOuverture: { $ne: 0 } }, { debitMouvement: { $ne: 0 } }, { creditMouvement: { $ne: 0 } } ] } },
+    { $sort: { numero: 1 } }
+  ];
 
-  // --- Étape 2: Récupérer tous les comptes du plan comptable ---
-  const tousLesComptes = await CompteComptable.find({}).lean();
-  const balanceMap = new Map();
+  const balanceData = await EcritureComptable.aggregate(pipeline);
 
-  // Initialiser la map avec tous les comptes
-  tousLesComptes.forEach(compte => {
-    balanceMap.set(compte._id.toString(), {
-      numero: compte.numero,
-      libelle: compte.libelle,
-      totalDebit: 0,
-      totalCredit: 0,
-    });
-  });
+  const totaux = balanceData.reduce((acc, ligne) => {
+    acc.soldeDebitOuverture += ligne.soldeDebitOuverture;
+    acc.soldeCreditOuverture += ligne.soldeCreditOuverture;
+    acc.debitMouvement += ligne.debitMouvement;
+    acc.creditMouvement += ligne.creditMouvement;
+    acc.soldeDebitFinal += ligne.soldeDebitFinal;
+    acc.soldeCreditFinal += ligne.soldeCreditFinal;
+    return acc;
+  }, { soldeDebitOuverture: 0, soldeCreditOuverture: 0, debitMouvement: 0, creditMouvement: 0, soldeDebitFinal: 0, soldeCreditFinal: 0 });
 
-  // Mettre à jour la map avec les mouvements calculés
-  mouvements.forEach(mvt => {
-    const compteId = mvt._id.toString();
-    if (balanceMap.has(compteId)) {
-      const compteData = balanceMap.get(compteId);
-      compteData.totalDebit = mvt.totalDebit;
-      compteData.totalCredit = mvt.totalCredit;
-    }
-  });
-
-  // --- Étape 3: Calculer les soldes et formater le résultat ---
-  let balanceResult = Array.from(balanceMap.values()).map(compte => {
-    const solde = compte.totalDebit - compte.totalCredit;
-    return {
-      ...compte,
-      soldeDebiteur: solde > 0 ? solde : 0,
-      soldeCrediteur: solde < 0 ? Math.abs(solde) : 0,
-    };
-  });
-  
-  // Filtrer les comptes non mouvementés si demandé
-  if (!inclureComptesNonMouvementes) {
-      balanceResult = balanceResult.filter(
-          compte => compte.totalDebit !== 0 || compte.totalCredit !== 0
-      );
-  }
-
-  // Trier par numéro de compte
-  return balanceResult.sort((a, b) => a.numero.localeCompare(b.numero));
+  return {
+      periode: { dateDebut, dateFin },
+      lignes: balanceData.map(l => Object.fromEntries(Object.entries(l).map(([key, value]) => [key, typeof value === 'number' ? roundTo(value) : value]))),
+      totaux: Object.fromEntries(Object.entries(totaux).map(([key, value]) => [key, roundTo(value)]))
+  };
 }
 
-
-module.exports = {
-  genererBalanceGenerale,
-};
+module.exports = { genererBalanceGenerale };

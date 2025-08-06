@@ -1,9 +1,12 @@
 // ==============================================================================
 //        POINT D'ENTRÉE PRINCIPAL DU SERVEUR
 //
-// Ce fichier orchestre le démarrage du serveur, la connexion à la BDD,
-// l'initialisation de Socket.IO, les tâches planifiées (cron jobs),
-// et la gestion des erreurs critiques ou arrêts système.
+// Ce fichier orchestre :
+// - le démarrage de l'application Express,
+// - la connexion aux services externes (MongoDB, Redis),
+// - l'initialisation de Socket.IO,
+// - l'exécution des tâches planifiées,
+// - la gestion des événements système critiques pour un arrêt propre.
 // ==============================================================================
 
 // --- 1. Chargement des variables d'environnement ---
@@ -16,81 +19,89 @@ const { connectDB, disconnectDB } = require('./config/database');
 const { initSocket } = require('./config/socket');
 const { initializeCronJobs } = require('./jobs/cronJobs');
 const { logger } = require('./middleware/logger');
+const { connectRedis, redisClient } = require('./config/redis'); // Ajout de Redis
 
-// --- 3. Fonctions utilitaires ---
+// --- 3. Configuration ---
+const PORT = process.env.PORT || 5000;
+const ENV = process.env.NODE_ENV || 'development';
 
-/**
- * Gère les événements critiques et assure un arrêt propre du serveur.
- * @param {http.Server} serverInstance
- */
-function setupProcessEventListeners(serverInstance) {
-  // Promesses non gérées
-  process.on('unhandledRejection', async (err) => {
-    logger.error('💥 Rejet de promesse non géré', { error: err });
-    await shutdown(serverInstance, 1);
-  });
-
-  // Exceptions non interceptées
-  process.on('uncaughtException', async (err) => {
-    logger.error('💥 Exception non interceptée', { error: err });
-    await shutdown(serverInstance, 1);
-  });
-
-  // Interruption système (ex: Ctrl+C)
-  process.on('SIGINT', async () => {
-    logger.warn('⚠️ Signal SIGINT reçu. Fermeture du serveur...');
-    await shutdown(serverInstance, 0);
-  });
-}
-
-/**
- * Ferme proprement le serveur et les connexions.
- * @param {http.Server} serverInstance
- * @param {number} code Code de sortie
- */
+// --- 4. Fermeture propre (Graceful Shutdown) ---
 async function shutdown(serverInstance, code = 0) {
+  logger.info('🛑 Fermeture du serveur en cours...');
   try {
+    // Fermer Redis d'abord
+    if (redisClient.isOpen) {
+      await redisClient.quit();
+      logger.info('Connexion Redis fermée.');
+    }
+    // Puis la base de données
     await disconnectDB();
+
+    // Enfin, le serveur HTTP
     serverInstance.close(() => {
       logger.info('✅ Serveur arrêté proprement.');
       process.exit(code);
     });
   } catch (err) {
-    logger.error('❌ Échec lors de l\'arrêt du serveur', { error: err });
+    logger.error('❌ Erreur lors de l\'arrêt du serveur', { error: err });
     process.exit(1);
   }
 }
 
-// --- 4. Fonction principale de démarrage ---
-async function startServer() {
-  try {
-    logger.info('====================================================');
-    logger.info('🚀 DÉMARRAGE DU SERVEUR');
-    logger.info('====================================================');
+// --- 5. Gestion des événements système ---
+function setupProcessEventListeners(serverInstance) {
+  process.on('unhandledRejection', (reason) => {
+    logger.error('💥 Rejet de promesse non géré. L\'application va s\'arrêter.', { reason });
+    throw reason;
+  });
 
-    // Connexion à la base de données
+  process.on('uncaughtException', async (err) => {
+    logger.error('💥 Exception non interceptée. Arrêt brutal du serveur...', { error: err });
+    await shutdown(serverInstance, 1);
+  });
+
+  process.on('SIGTERM', async () => {
+    logger.warn('⚠️ Signal SIGTERM reçu. Fermeture propre du serveur...');
+    await shutdown(serverInstance, 0);
+  });
+
+  process.on('SIGINT', async () => {
+    logger.warn('⚠️ Signal SIGINT (Ctrl+C) reçu. Fermeture propre du serveur...');
+    await shutdown(serverInstance, 0);
+  });
+}
+
+// --- 6. Démarrage du serveur ---
+async function startServer() {
+  logger.info('====================================================');
+  logger.info('🚀 Lancement du serveur...');
+  logger.info(`🔧 Environnement : ${ENV}`);
+  logger.info('====================================================');
+
+  try {
+    // Connexion aux services externes
     await connectDB();
+    await connectRedis();
 
     // Création du serveur HTTP
     const server = http.createServer(app);
 
-    // Initialisation de WebSocket
+    // Initialisation de Socket.IO
     initSocket(server);
 
-    // Démarrage du serveur
-    const PORT = process.env.PORT || 5000;
+     // Lancement du serveur
     const serverInstance = server.listen(PORT, () => {
-      logger.info('✅ SERVEUR EN LIGNE');
-      logger.info(`🌐 Environnement : ${process.env.NODE_ENV || 'development'}`);
-      logger.info(`🚪 Port          : ${PORT}`);
-      logger.info(`🆔 PID           : ${process.pid}`);
+      logger.info('====================================================');
+      logger.info('✅ Serveur en ligne !');
+      logger.info(`🌍 Port         : ${PORT}`);
+      logger.info(`🧬 PID          : ${process.pid}`);
       logger.info('====================================================');
     });
 
-    // Écoute des signaux système pour arrêt propre
+    // Écoute des événements critiques (crash, Ctrl+C...)
     setupProcessEventListeners(serverInstance);
 
-    // Lancement des tâches planifiées
+    // Initialisation des tâches planifiées
     initializeCronJobs();
 
   } catch (error) {
@@ -99,5 +110,5 @@ async function startServer() {
   }
 }
 
-// --- 5. Lancement ---
+// --- 7. Lancer ---
 startServer();

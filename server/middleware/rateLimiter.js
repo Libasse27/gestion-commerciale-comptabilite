@@ -1,33 +1,31 @@
+// server/middleware/rateLimiter.js
 // ==============================================================================
 //           Middleware de Limitation de Taux (Rate Limiting)
 //
-// Ce module configure et exporte différents "rate limiters" en utilisant
-// la bibliothèque `express-rate-limit`. Le but est de protéger l'API contre
-// les abus, comme les attaques par déni de service (DoS) ou les tentatives
-// de brute-force sur les points d'authentification.
-//
-// Différentes stratégies peuvent être définies pour différentes routes.
+// Ce module configure différents "rate limiters" pour protéger l'API contre
+// les abus, comme les attaques DoS ou les tentatives de brute-force.
 // ==============================================================================
 
 const rateLimit = require('express-rate-limit');
 
 /**
- * Options de configuration communes à tous les limiters.
+ * Options communes à tous les limiters.
  */
 const commonOptions = {
   standardHeaders: true, // Envoie les en-têtes `RateLimit-*` standards
   legacyHeaders: false,  // Désactive les anciens en-têtes `X-RateLimit-*`
-  // store: ... // Pour utiliser un store partagé comme Redis dans un environnement multi-serveurs
+  // Pour un déploiement en production avec plusieurs serveurs (scaling),
+  // il faudrait utiliser un store partagé comme Redis :
+  // store: new RateLimitRedis({ sendCommand: (...args) => redisClient.sendCommand(args) }),
 };
 
 /**
  * Limiteur général pour la plupart des routes de l'API.
- * Vise à prévenir un abus général du service.
  */
 const apiLimiter = rateLimit({
   ...commonOptions,
-  windowMs: 15 * 60 * 1000, // Fenêtre de 15 minutes
-  max: 200, // Limite chaque IP à 200 requêtes par fenêtre de 15 minutes
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200,
   message: {
     status: 'fail',
     message: 'Trop de requêtes envoyées depuis cette IP, veuillez réessayer après 15 minutes.',
@@ -35,29 +33,27 @@ const apiLimiter = rateLimit({
 });
 
 /**
- * Limiteur plus strict spécifiquement pour les routes d'authentification.
- * Vise à ralentir les tentatives de brute-force sur les mots de passe.
+ * Limiteur plus strict pour les routes d'authentification sensibles.
  */
 const authLimiter = rateLimit({
   ...commonOptions,
-  windowMs: 10 * 60 * 1000, // Fenêtre de 10 minutes
-  max: 10, // Limite chaque IP à 10 tentatives de connexion / réinitialisation par fenêtre
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
   message: {
     status: 'fail',
-    message: "Trop de tentatives d'authentification. Pour des raisons de sécurité, veuillez réessayer plus tard.",
+    message: "Trop de tentatives d'authentification depuis cette IP. Pour des raisons de sécurité, l'accès est bloqué temporairement.",
   },
-  skipSuccessfulRequests: true, // Ne pas compter les requêtes réussies (ex: login réussi) dans la limite
+  skipSuccessfulRequests: true, // Ne pas compter les requêtes réussies dans la limite
 });
 
 
 /**
- * Limiteur très strict pour les opérations sensibles ou coûteuses.
- * Ex: génération de rapports complexes, exports de masse.
+ * Limiteur très strict pour les opérations coûteuses.
  */
 const sensitiveOperationLimiter = rateLimit({
     ...commonOptions,
-    windowMs: 60 * 60 * 1000, // Fenêtre de 1 heure
-    max: 5, // Limite à 5 opérations par heure
+    windowMs: 60 * 60 * 1000, // 1 heure
+    max: 5,
     message: {
         status: 'fail',
         message: 'Vous avez atteint la limite pour cette opération. Veuillez réessayer dans une heure.'

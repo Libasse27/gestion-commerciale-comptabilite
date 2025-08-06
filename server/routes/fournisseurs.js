@@ -1,57 +1,41 @@
-// ==============================================================================
-//           Routeur pour les Ressources Fournisseurs (/api/v1/fournisseurs)
-//
-// Ce fichier définit toutes les routes liées à la gestion des fournisseurs.
-// Il utilise les middlewares d'authentification et de permissions pour
-// sécuriser chaque point de terminaison.
-// ==============================================================================
-
+// server/routes/fournisseurs.js
 const express = require('express');
-
-// --- Importation des Contrôleurs et Middlewares ---
 const fournisseurController = require('../controllers/commercial/fournisseurController');
-const authMiddleware = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 const { checkPermission } = require('../middleware/permissions');
+const { body } = require('express-validator');
+const { handleValidationErrors } = require('../middleware/validation');
 
-// --- Initialisation du Routeur ---
 const router = express.Router();
+router.use(protect);
 
-
-// --- Application du Middleware d'Authentification ---
-// L'utilisateur doit être connecté pour accéder à n'importe quelle route fournisseur.
-router.use(authMiddleware);
-
-
-// --- Définition des Routes CRUD pour les Fournisseurs ---
-
-// Routes pour la collection de fournisseurs ( / )
-router
-  .route('/')
+router.route('/')
   .post(
-    checkPermission('create:fournisseur'), // Seuls les utilisateurs avec cette permission peuvent créer
+    checkPermission('fournisseur:create'),
+    [
+        body('nom', 'Le nom du fournisseur est obligatoire.').not().isEmpty().trim(),
+        body('email', 'Veuillez fournir un email valide.').optional({ checkFalsy: true }).isEmail().normalizeEmail(),
+    ],
+    handleValidationErrors,
     fournisseurController.createFournisseur
   )
   .get(
-    checkPermission('read:fournisseur'), // Seuls les utilisateurs avec cette permission peuvent lister
+    checkPermission('fournisseur:read'),
     fournisseurController.getAllFournisseurs
   );
 
-// Routes pour un document fournisseur spécifique ( /:id )
-router
-  .route('/:id')
+router.route('/:id')
   .get(
-    checkPermission('read:fournisseur'),
+    checkPermission('fournisseur:read'),
     fournisseurController.getFournisseurById
   )
   .patch(
-    checkPermission('update:fournisseur'),
+    checkPermission('fournisseur:update'),
     fournisseurController.updateFournisseur
   )
   .delete(
-    checkPermission('delete:fournisseur'),
+    checkPermission('fournisseur:delete'),
     fournisseurController.deleteFournisseur
   );
 
-
-// --- Exportation du Routeur ---
 module.exports = router;

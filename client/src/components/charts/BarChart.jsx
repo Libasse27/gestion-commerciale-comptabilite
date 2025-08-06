@@ -1,70 +1,48 @@
-// ==============================================================================
-//           Composant Graphique en Barres (BarChart)
-//
-// Ce composant encapsule la bibliothèque `react-chartjs-2` pour afficher un
-// graphique en barres.
-//
-// Comme le LineChart, il est réutilisable et est piloté par les props
-// `data` et `options`.
-//
-// Il enregistre tous les éléments nécessaires de Chart.js pour un graphique
-// en barres.
-// ==============================================================================
-
+// client/src/components/charts/BarChart.jsx
 import React from 'react';
 import { Bar } from 'react-chartjs-2';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement, // Élément spécifique pour les graphiques en barres
-  Title,
-  Tooltip,
-  Legend,
+  Chart as ChartJS, CategoryScale, LinearScale, BarElement,
+  Title, Tooltip, Legend,
 } from 'chart.js';
+import { formatCurrency } from '../../utils/formatters';
 
-// --- Enregistrement des composants Chart.js ---
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement, // On enregistre BarElement
-  Title,
-  Tooltip,
-  Legend
+  CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend
 );
 
-/**
- * Affiche un graphique en barres.
- *
- * @param {object} props - Les propriétés du composant.
- * @param {object} props.data - L'objet de données pour le graphique.
- * @param {object} [props.options] - L'objet d'options pour personnaliser le graphique.
- */
 const BarChart = ({ data, options }) => {
-  // Options par défaut pour un graphique en barres
   const defaultOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        position: 'top',
-      },
-      title: {
-        display: false,
-        text: 'Titre du Graphique en Barres',
+      legend: { display: true, position: 'top' },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          label: (context) => {
+            let label = context.dataset.label || '';
+            if (label) label += ': ';
+            if (context.parsed.y !== null) {
+              label += formatCurrency(context.parsed.y);
+            }
+            return label;
+          }
+        }
       },
     },
     scales: {
-        x: {
-            grid: {
-                display: false,
-            },
-        },
         y: {
-            beginAtZero: true, // L'axe Y commence toujours à 0
+            beginAtZero: true,
+            ticks: {
+              callback: (value) => {
+                return new Intl.NumberFormat('fr-FR', { notation: 'compact', compactDisplay: 'short' }).format(value);
+              }
+            }
         },
     },
-    indexAxis: 'x', // 'x' pour des barres verticales, 'y' pour des barres horizontales
+    indexAxis: 'x',
   };
 
   const chartOptions = { ...defaultOptions, ...options };

@@ -1,48 +1,24 @@
-// ==============================================================================
-//           Routeur pour les Données des Tableaux de Bord (/api/v1/dashboard)
-// ==============================================================================
-//
-// Ce fichier définit les routes pour récupérer les données agrégées
-// nécessaires à l'affichage des tableaux de bord (principal, commercial, etc.).
-//
-// Toutes les routes sont protégées par une authentification.
-//
-// ==============================================================================
-
+// server/routes/dashboard.js
 const express = require('express');
-const router = express.Router();
-
-// --- Middlewares & Contrôleurs ---
-const dashboardController = require('../controllers/dashboard/dashboardController');
-const authMiddleware = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 const { checkPermission } = require('../middleware/permissions');
 
-// --- Middleware global : Authentification requise pour toutes les routes ---
-router.use(authMiddleware);
+// Importer les contrôleurs et sous-routeurs
+const dashboardController = require('../controllers/dashboard/dashboardController');
+const kpiRoutes = require('./dashboard/kpis');
+const rapportRoutes = require('./dashboard/rapports');
 
-// -----------------------------------------------------------------------------
-// @route   GET /api/v1/dashboard/main
-// @desc    Données principales pour le tableau de bord global
-// @access  Privé
-// -----------------------------------------------------------------------------
-router.get(
-  '/main',
-  checkPermission('read:rapport'), // Optionnel selon la politique d'accès
-  dashboardController.getMainDashboardData
-);
+const router = express.Router();
 
-// -----------------------------------------------------------------------------
-// @route   GET /api/v1/dashboard/commercial
-// @desc    Données spécifiques à un utilisateur commercial (à implémenter)
-// @access  Privé
-// -----------------------------------------------------------------------------
-// router.get(
-//   '/commercial',
-//   // checkPermission('read:vente'),
-//   dashboardController.getCommercialDashboardData
-// );
+// Appliquer les middlewares d'authentification et de permission à toutes les routes du dashboard
+router.use(protect);
+router.use(checkPermission('dashboard:read'));
 
-// -----------------------------------------------------------------------------
-// Export du routeur
-// -----------------------------------------------------------------------------
+// Route principale pour les données agrégées du tableau de bord
+router.get('/', dashboardController.getMainDashboardData);
+
+// Brancher les sous-routeurs
+router.use('/kpis', kpiRoutes);
+router.use('/rapports', rapportRoutes);
+
 module.exports = router;

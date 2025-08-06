@@ -1,92 +1,67 @@
-// ==============================================================================
-//           Service pour la Gestion des Sauvegardes de la Base de Données
-//
-// Ce service encapsule la logique de création de sauvegardes de la base de
-// données MongoDB en utilisant l'utilitaire en ligne de commande `mongodump`.
-//
-// Il est conçu pour être appelé par une tâche planifiée (cron job) ou
-// manuellement par un administrateur.
-//
-// Chaque opération de sauvegarde est enregistrée dans le modèle `Sauvegarde`
-// pour une traçabilité complète.
-// ==============================================================================
-
+// server/services/exports/backupService.js
 const { exec } = require('child_process');
+const util = require('util');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs/promises');
 const Sauvegarde = require('../../models/system/Sauvegarde');
 const { logger } = require('../../middleware/logger');
 
-// Chemin où les sauvegardes seront stockées localement
+const execPromise = util.promisify(exec);
 const BACKUP_PATH = process.env.BACKUP_PATH || path.join(__dirname, '..', '..', 'backups');
 
-
-/**
- * Exécute le processus de sauvegarde de la base de données.
- * @param {'Automatique' | 'Manuelle'} type - Le type de sauvegarde.
- * @param {string | null} userId - L'ID de l'utilisateur si la sauvegarde est manuelle.
- */
 async function runDatabaseBackup(type = 'Automatique', userId = null) {
   logger.info(`Démarrage d'une sauvegarde de type '${type}'...`);
-
-  // S'assurer que le dossier de backup existe
-  if (!fs.existsSync(BACKUP_PATH)) {
-    fs.mkdirSync(BACKUP_PATH, { recursive: true });
-  }
+  await fs.mkdir(BACKUP_PATH, { recursive: true });
   
   const date = new Date().toISOString().replace(/:/g, '-').replace(/\..+/, '');
   const nomFichier = `backup-${date}.gz`;
   const cheminFichier = path.join(BACKUP_PATH, nomFichier);
   
-  // Construit la commande mongodump
-  // --uri: spécifie la base de données à sauvegarder
-  // --archive: écrit la sortie dans un fichier unique
-  // --gzip: compresse le fichier de sortie
   const command = `mongodump --uri="${process.env.MONGODB_URI}" --archive="${cheminFichier}" --gzip`;
   
-  exec(command, (error, stdout, stderr) => {
-    if (error) {
-      const errorMessage = `Échec de la sauvegarde: ${error.message}. Stderr: ${stderr}`;
-      logger.error(errorMessage);
-      
-      // Enregistrer l'échec dans la base de données
-      Sauvegarde.create({
-        nomFichier,
-        type,
-        statut: 'Échouée',
-        chemin: cheminFichier,
-        initiateur: userId,
-        messageErreur: error.message,
-      }).catch(dbError => logger.error("Impossible d'enregistrer l'échec de la sauvegarde dans la DB.", { error: dbError }));
-      
-      return;
-    }
-
-    // Si la commande réussit
-    logger.info(`Sauvegarde réussie ! Fichier créé : ${cheminFichier}`);
+  try {
+    const { stdout, stderr } = await execPromise(command);
+    if (stderr) logger.warn(`Stderr lors de la sauvegarde ${nomFichier}:`, stderr);
     
-    // Récupérer la taille du fichier
-    const stats = fs.statSync(cheminFichier);
-    const fileSizeInBytes = stats.size;
-
-    // Enregistrer le succès dans la base de données
-    Sauvegarde.create({
-      nomFichier,
-      type,
-      statut: 'Réussie',
-      taille: fileSizeInBytes,
-      emplacement: 'local',
-      chemin: cheminFichier,
+    const stats = await fs.stat(cheminFichier);
+    
+    const sauvegardeLog = await Sauvegarde.create({
+      nomFichier, type, statut: 'Réussie',
+      taille: stats.size, emplacement: 'local', chemin: cheminFichier,
       initiateur: userId,
-    }).catch(dbError => logger.error("Impossible d'enregistrer le succès de la sauvegarde dans la DB.", { error: dbError }));
-  });
+    });
+    
+    logger.info(`Sauvegarde réussie : ${cheminFichier}`);
+    return sauvegardeLog;
+
+  } catch (error) {
+    logger.error(`Échec de la sauvegarde: ${error.message}`);
+    
+    await Sauvegarde.create({
+      nomFichier, type, statut: 'Échouée',
+      chemin: cheminFichier, initiateur: userId,
+      messageErreur: error.message,
+    });
+    
+    throw error;
+  }
 }
 
-/**
- * Récupère la liste des sauvegardes enregistrées.
- */
-async function getBackupHistory() {
-    return await Sauvegarde.find().sort({ createdAt: -1 });
+async function getBackupHistory(options = {}) {
+    const page = parseInt(options.page, 10) || 1;
+    const limit = parseInt(options.limit, 10) || 10;
+
+    const query = Sauvegarde.find()
+      .populate('initiateur', 'firstName lastName')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+      
+    const totalPromise = Sauvegarde.countDocuments();
+    const [backups, total] = await Promise.all([query, totalPromise]);
+
+    return { backups, total, pages: Math.ceil(total / limit), currentPage: page };
 }
 
 module.exports = {

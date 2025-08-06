@@ -8,6 +8,18 @@
 // ==============================================================================
 
 /**
+ * S'assure qu'une valeur est bien un nombre, sinon retourne une valeur par défaut.
+ * Très utile pour nettoyer les entrées utilisateur avant calcul.
+ * @param {*} value - La valeur à vérifier.
+ * @param {number} [defaultValue=0] - La valeur à retourner si l'entrée n'est pas un nombre valide.
+ * @returns {number}
+ */
+const ensureNumber = (value, defaultValue = 0) => {
+    const num = Number(value);
+    return isNaN(num) || num === null ? defaultValue : num;
+};
+
+/**
  * Arrondit un nombre à un nombre spécifié de décimales.
  * Gère les imprécisions de la virgule flottante en utilisant Number.EPSILON.
  * @param {number} num - Le nombre à arrondir.
@@ -15,12 +27,10 @@
  * @returns {number} Le nombre arrondi.
  */
 const roundTo = (num, decimals = 2) => {
-  if (typeof num !== 'number' || typeof decimals !== 'number') {
-    return 0;
-  }
-  const shifter = Math.pow(10, decimals);
-  // L'ajout de Number.EPSILON corrige les erreurs d'arrondi sur des cas comme (1.005 * 100)
-  return Math.round((num + Number.EPSILON) * shifter) / shifter;
+    const value = ensureNumber(num);
+    const shifter = Math.pow(10, decimals);
+    // L'ajout de Number.EPSILON corrige les erreurs d'arrondi sur des cas comme (1.005 * 100)
+    return Math.round((value + Number.EPSILON) * shifter) / shifter;
 };
 
 /**
@@ -30,8 +40,10 @@ const roundTo = (num, decimals = 2) => {
  * @returns {number} Le montant de la TVA, arrondi à 2 décimales.
  */
 const calculateTVA = (amount, rate) => {
-  const tvaAmount = (amount * rate) / 100;
-  return roundTo(tvaAmount, 2);
+    const value = ensureNumber(amount);
+    const tvaRate = ensureNumber(rate);
+    const tvaAmount = (value * tvaRate) / 100;
+    return roundTo(tvaAmount, 2);
 };
 
 /**
@@ -41,8 +53,9 @@ const calculateTVA = (amount, rate) => {
  * @returns {number} Le montant toutes taxes comprises.
  */
 const calculateTTC = (amountHT, rateTVA) => {
-  const tva = calculateTVA(amountHT, rateTVA);
-  return roundTo(amountHT + tva, 2);
+    const valueHT = ensureNumber(amountHT);
+    const tva = calculateTVA(valueHT, rateTVA);
+    return roundTo(valueHT + tva, 2);
 };
 
 /**
@@ -52,8 +65,10 @@ const calculateTTC = (amountHT, rateTVA) => {
  * @returns {number} Le montant hors taxes.
  */
 const calculateHT = (amountTTC, rateTVA) => {
-  const amountHT = amountTTC / (1 + rateTVA / 100);
-  return roundTo(amountHT, 2);
+    const valueTTC = ensureNumber(amountTTC);
+    const tvaRate = ensureNumber(rateTVA);
+    const amountHT = valueTTC / (1 + tvaRate / 100);
+    return roundTo(amountHT, 2);
 };
 
 /**
@@ -63,37 +78,24 @@ const calculateHT = (amountTTC, rateTVA) => {
  * @returns {{marginValue: number, marginRate: number}} Un objet contenant la marge et le taux de marge.
  */
 const calculateMargin = (sellingPrice, costPrice) => {
-  if (typeof sellingPrice !== 'number' || typeof costPrice !== 'number') {
-    return { marginValue: 0, marginRate: 0 };
-  }
-  const marginValue = sellingPrice - costPrice;
-  // Évite la division par zéro si le coût d'achat est nul
-  const marginRate = costPrice > 0 ? (marginValue / costPrice) * 100 : Infinity;
+    const sp = ensureNumber(sellingPrice);
+    const cp = ensureNumber(costPrice);
 
-  return {
-    marginValue: roundTo(marginValue, 2),
-    marginRate: roundTo(marginRate, 2),
-  };
+    const marginValue = sp - cp;
+    // Évite la division par zéro si le coût d'achat est nul
+    const marginRate = cp > 0 ? (marginValue / cp) * 100 : Infinity;
+
+    return {
+        marginValue: roundTo(marginValue, 2),
+        marginRate: roundTo(marginRate, 2),
+    };
 };
-
-/**
- * S'assure qu'une valeur est bien un nombre, sinon retourne une valeur par défaut.
- * Très utile pour nettoyer les entrées utilisateur avant calcul.
- * @param {*} value - La valeur à vérifier.
- * @param {number} [defaultValue=0] - La valeur à retourner si l'entrée n'est pas un nombre valide.
- * @returns {number}
- */
-const ensureNumber = (value, defaultValue = 0) => {
-  const num = Number(value);
-  return isNaN(num) || num === null ? defaultValue : num;
-};
-
 
 module.exports = {
-  roundTo,
-  calculateTVA,
-  calculateTTC,
-  calculateHT,
-  calculateMargin,
-  ensureNumber,
+    roundTo,
+    calculateTVA,
+    calculateTTC,
+    calculateHT,
+    calculateMargin,
+    ensureNumber,
 };

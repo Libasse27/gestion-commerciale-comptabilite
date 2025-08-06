@@ -1,3 +1,4 @@
+// server/utils/helpers.js
 // ==============================================================================
 //                  Fonctions d'Aide Utilitaires et Génériques
 //
@@ -9,7 +10,7 @@
 // des services et contrôleurs concentré sur la logique métier.
 // ==============================================================================
 
-const { roundTo, ensureNumber } = require('./numberUtils'); // Importation pour la robustesse
+const { roundTo, ensureNumber } = require('./numberUtils');
 
 /**
  * Génère une chaîne de caractères aléatoire de la longueur spécifiée.
@@ -32,13 +33,13 @@ const generateRandomString = (length = 10) => {
  * @returns {string} Le montant formaté (ex: "1 235 FCFA").
  */
 const formatCurrencyXOF = (amount) => {
-  if (typeof amount !== 'number' || isNaN(amount)) return '0 FCFA';
+  const numAmount = ensureNumber(amount);
   return new Intl.NumberFormat('fr-SN', {
     style: 'currency',
     currency: 'XOF',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(numAmount);
 };
 
 /**
@@ -91,6 +92,7 @@ const calculatePercentage = (current, total) => {
   const numTotal = ensureNumber(total);
 
   if (numTotal === 0) return 0;
+  if (numCurrent > numTotal) return 100;
   return Math.round((numCurrent / numTotal) * 100);
 };
 

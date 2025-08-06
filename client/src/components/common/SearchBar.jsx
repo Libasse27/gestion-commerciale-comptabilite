@@ -1,70 +1,54 @@
-// ==============================================================================
-//                Composant de Barre de Recherche Générique
-//
-// MISE À JOUR : Synchronisation de l'état interne avec les props externes
-// et amélioration de l'interface avec des icônes.
-// ==============================================================================
-
+// client/src/components/common/SearchBar.jsx
 import React, { useState, useEffect } from 'react';
 import { Form, InputGroup, Button } from 'react-bootstrap';
-import { useDebounce } from '../../hooks/useDebounce'; // Assurez-vous que l'import est correct
-import { Search, XCircleFill } from 'react-bootstrap-icons';
+import { useDebounce } from '../../hooks/useDebounce';
+import { Search, XCircle } from 'react-bootstrap-icons';
+import { UI_SETTINGS } from '../../utils/constants';
 
 /**
  * Affiche une barre de recherche avec debounce.
- *
- * @param {object} props - Les propriétés du composant.
- * @param {string} props.value - La valeur actuelle de la recherche (contrôlée par le parent).
- * @param {function(string): void} props.onChange - La fonction pour mettre à jour la valeur dans le parent.
- * @param {function(string): void} props.onSearch - La fonction de callback appelée avec le terme de recherche débattue.
- * @param {string} [props.placeholder='Rechercher...']
- * @param {number} [props.debounceDelay=500]
- * @param {boolean} [props.disabled=false]
+ * @param {{
+ *  onSearch: (term: string) => void,
+ *  placeholder?: string,
+ *  initialValue?: string
+ * }} props
  */
 const SearchBar = ({
-  value,
-  onChange,
   onSearch,
   placeholder = 'Rechercher...',
-  debounceDelay = 500,
-  disabled = false,
+  initialValue = '',
 }) => {
-  
-  // Utilise notre hook pour obtenir la valeur débattue du terme de recherche
-  const debouncedSearchTerm = useDebounce(value, debounceDelay);
+  const [searchTerm, setSearchTerm] = useState(initialValue);
+  const debouncedSearchTerm = useDebounce(searchTerm, UI_SETTINGS.DEFAULT_DEBOUNCE_DELAY);
 
-  // Ce `useEffect` se déclenche uniquement lorsque la valeur *débattue* change.
   useEffect(() => {
-    // Si la recherche est définie, on l'exécute.
-    if (onSearch) {
-      onSearch(debouncedSearchTerm);
-    }
+    // Déclencher la recherche uniquement si la valeur débattue change
+    onSearch(debouncedSearchTerm);
   }, [debouncedSearchTerm, onSearch]);
 
   const handleClear = () => {
-    onChange('');
+    setSearchTerm('');
   };
 
   return (
-    <InputGroup className="mb-3">
+    <InputGroup>
       <InputGroup.Text>
         <Search />
       </InputGroup.Text>
       <Form.Control
-        type="text"
+        type="search"
         placeholder={placeholder}
-        value={value} // L'état est maintenant directement contrôlé par le parent
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
       />
-      {value && (
+      {searchTerm && (
         <Button
           variant="light"
           onClick={handleClear}
           className="border"
-          title="Effacer la recherche"
+          aria-label="Effacer la recherche"
         >
-          <XCircleFill />
+          <XCircle />
         </Button>
       )}
     </InputGroup>

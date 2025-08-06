@@ -1,12 +1,9 @@
+// client/src/hooks/usePermissions.js
 // ==============================================================================
 //           Hook Personnalisé pour la Vérification des Permissions
 //
-// Ce hook est une surcouche simple au hook `useAuth`. Son seul but est de
-// fournir une API plus claire et plus sémantique pour la vérification des
-// permissions dans les composants.
-//
-// Il abstrait la logique de " fouiller " dans l'objet `user` pour trouver les
-// permissions, rendant les composants plus lisibles.
+// Fournit une API sémantique pour la vérification des permissions dans les
+// composants en s'appuyant sur le hook `useAuth`.
 // ==============================================================================
 
 import { useAuth } from './useAuth';
@@ -21,14 +18,16 @@ import { useCallback } from 'react';
  * }}
  */
 export const usePermissions = () => {
-  const { permissions } = useAuth(); // Récupère le Set de permissions depuis useAuth
+  const { permissions } = useAuth();
 
   /**
    * Vérifie si l'utilisateur possède une permission spécifique.
+   * @param {string | undefined} requiredPermission
+   * @returns {boolean}
    */
   const hasPermission = useCallback(
     (requiredPermission) => {
-      if (!requiredPermission) return true; // Si aucune permission n'est requise, on autorise
+      if (!requiredPermission) return true;
       return permissions.has(requiredPermission);
     },
     [permissions]
@@ -36,6 +35,8 @@ export const usePermissions = () => {
   
   /**
    * Vérifie si l'utilisateur possède au moins une des permissions listées.
+   * @param {string[]} [requiredPermissions=[]]
+   * @returns {boolean}
    */
   const hasAnyPermission = useCallback(
     (requiredPermissions = []) => {
@@ -44,7 +45,6 @@ export const usePermissions = () => {
     },
     [permissions]
   );
-
 
   return { permissions, hasPermission, hasAnyPermission };
 };

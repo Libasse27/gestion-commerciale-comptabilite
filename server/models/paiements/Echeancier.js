@@ -1,98 +1,43 @@
-// ==============================================================================
-//           Modèle Mongoose pour les Échéanciers de Paiement
-//
-// Ce modèle permet de définir un plan de paiement en plusieurs fois pour
-// une facture spécifique. Il est essentiel pour le suivi des paiements
-// partiels et la prévision de la trésorerie.
-// ==============================================================================
-
+// server/models/paiements/Echeancier.js
 const mongoose = require('mongoose');
+const { roundTo } = require('../../utils/numberUtils');
 
-/**
- * Sous-schéma pour une ligne d'échéance.
- * Chaque ligne représente un paiement partiel prévu.
- */
 const ligneEcheanceSchema = new mongoose.Schema({
-  dateEcheance: {
-    type: Date,
-    required: true,
-  },
-  montantDu: {
-    type: Number,
-    required: true,
-  },
-  statut: {
-    type: String,
-    enum: ['À payer', 'Payée', 'En retard'],
-    default: 'À payer',
-  },
-  paiementAssocie: { // L'ID du paiement qui a soldé cette échéance
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Paiement',
-    default: null,
-  }
+  dateEcheance: { type: Date, required: true },
+  montantDu: { type: Number, required: true, min: [0.01, 'Le montant de l\'échéance doit être positif.'] },
+  statut: { type: String, enum: ['À payer', 'Payée', 'En retard'], default: 'À payer' },
+  paiementAssocie: { type: mongoose.Schema.Types.ObjectId, ref: 'Paiement', default: null }
 }, { _id: false });
 
-
-/**
- * Schéma principal pour l'Échéancier.
- */
 const echeancierSchema = new mongoose.Schema(
   {
-    /**
-     * La facture concernée par cet échéancier.
-     * Une facture ne peut avoir qu'un seul échéancier actif.
-     */
     facture: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Facture',
       required: true,
-      unique: true, // Garantit qu'une facture n'a qu'un seul échéancier
+      unique: true // L'option unique crée l'index nécessaire
     },
-
-    /**
-     * Le client associé, pour faciliter les requêtes.
-     */
-    client: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Client',
-        required: true,
-    },
-
-    /**
-     * Le tableau des différentes échéances.
-     */
+    client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
     lignes: {
         type: [ligneEcheanceSchema],
         validate: [
-            {
-                validator: function(lignes) { return lignes.length > 0; },
-                message: 'Un échéancier doit contenir au moins une ligne.'
-            },
+            { validator: (l) => l.length > 0, msg: 'Un échéancier doit contenir au moins une ligne.' },
             {
                 validator: async function(lignes) {
-                    const facture = await mongoose.model('Facture').findById(this.facture);
+                    const Facture = mongoose.model('Facture');
+                    const facture = await Facture.findById(this.facture).lean();
                     if (!facture) return false;
+                    
                     const totalEcheances = lignes.reduce((sum, l) => sum + l.montantDu, 0);
-                    // Accepter une petite marge d'erreur
-                    return Math.abs(totalEcheances - facture.totalTTC) < 0.01;
+                    
+                    return Math.abs(roundTo(totalEcheances) - roundTo(facture.totalTTC)) < 0.01;
                 },
                 message: 'La somme des montants des échéances doit être égale au total TTC de la facture.'
             }
         ]
     },
-    
-    statut: {
-      type: String,
-      enum: ['En cours', 'Soldé', 'Annulé'],
-      default: 'En cours',
-    },
-    
-    creePar: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
+    statut: { type: String, enum: ['En cours', 'Soldé', 'Annulé'], default: 'En cours' },
+    creePar: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   },
   {
     timestamps: true,
@@ -100,7 +45,11 @@ const echeancierSchema = new mongoose.Schema(
   }
 );
 
+// Pas besoin de echeancierSchema.index({ facture: 1 }); car unique:true le fait déjà.
+// On garde celui-ci qui est un index composite.
+echeancierSchema.index({ client: 1, statut: 1 });
 
-const Echeancier = mongoose.model('Echeancier', echeancierSchema);
+
+const Echeancier = mongoose.models.Echeancier || mongoose.model('Echeancier', echeancierSchema);
 
 module.exports = Echeancier;

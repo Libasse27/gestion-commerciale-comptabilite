@@ -1,90 +1,65 @@
-// ==============================================================================
-//           Composant Utilitaire pour la Génération de PDF
-//
-// Ce composant fournit un bouton qui, au clic, génère un document PDF à partir
-// d'un élément HTML spécifié.
-//
-// Il utilise une combinaison de :
-//   - `html2canvas`: Pour "capturer" le contenu d'un <div> sous forme d'image.
-//   - `jsPDF`: Pour créer le document PDF et y insérer l'image capturée.
-//
-// Cette approche est excellente car elle permet de designer les documents
-// (factures, devis) directement en HTML/CSS.
-// ==============================================================================
-
+// client/src/components/print/PDFGenerator.jsx
 import React, { useState } from 'react';
 import { Button } from 'react-bootstrap';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { FileEarmarkPdfFill } from 'react-bootstrap-icons';
+import { FileEarmarkPdf } from 'react-bootstrap-icons';
 import Loader from '../common/Loader';
+import { useNotification } from '../../context/NotificationContext';
+import { TOAST_TYPES } from '../../utils/constants';
 
-/**
- * Un bouton qui génère un PDF à partir du contenu d'un élément HTML.
- *
- * @param {object} props - Les propriétés du composant.
- * @param {string} props.elementIdToPrint - L'ID de l'élément du DOM à capturer pour le PDF.
- * @param {string} props.filename - Le nom du fichier PDF à télécharger (sans l'extension .pdf).
- * @param {string} [props.buttonText='Télécharger en PDF'] - Le texte du bouton.
- * @param {React.ReactNode} [props.icon=<FileEarmarkPdfFill />] - L'icône à afficher sur le bouton.
- */
 const PDFGenerator = ({
   elementIdToPrint,
-  filename,
-  buttonText = 'Télécharger en PDF',
-  icon = <FileEarmarkPdfFill className="me-2" />,
+  filename = 'document',
+  children = 'Télécharger en PDF',
   ...buttonProps
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const { addNotification } = useNotification();
 
   const handleGeneratePdf = async () => {
     const input = document.getElementById(elementIdToPrint);
     if (!input) {
-      console.error(`L'élément avec l'ID "${elementIdToPrint}" n'a pas été trouvé.`);
+      const errorMsg = `L'élément "#${elementIdToPrint}" est introuvable.`;
+      addNotification(errorMsg, TOAST_TYPES.ERROR);
       return;
     }
 
     setIsGenerating(true);
 
     try {
-      // Utiliser html2canvas pour capturer l'élément
-      const canvas = await html2canvas(input, {
-        scale: 2, // Augmente la résolution de l'image pour une meilleure qualité
-        useCORS: true, // Important si vous avez des images provenant d'autres domaines
-      });
-
+      const canvas = await html2canvas(input, { scale: 2, useCORS: true });
       const imgData = canvas.toDataURL('image/png');
       
-      // --- Création du PDF avec jsPDF ---
-      // Dimensions d'une page A4 en millimètres : 210mm x 297mm
-      const pdf = new jsPDF({
-        orientation: 'p', // 'p' pour portrait, 'l' pour landscape
-        unit: 'mm',
-        format: 'a4',
-      });
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = imgWidth / imgHeight;
+      const finalImgHeight = pdfWidth / ratio;
       
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
+      let heightLeft = finalImgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, finalImgHeight);
+      heightLeft -= pdfHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - finalImgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, finalImgHeight);
+        heightLeft -= pdfHeight;
+      }
       
-      // Calculer le ratio pour que l'image s'adapte à la largeur du PDF
-      const ratio = canvasWidth / canvasHeight;
-      const imgWidth = pdfWidth;
-      const imgHeight = imgWidth / ratio;
-      
-      // Ajouter l'image au PDF
-      // Si l'image est plus haute que la page, elle sera coupée.
-      // Pour des documents de plusieurs pages, la logique est plus complexe.
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-      
-      // Télécharger le PDF
       pdf.save(`${filename}.pdf`);
+      addNotification('Le PDF a été généré avec succès.', TOAST_TYPES.SUCCESS);
 
     } catch (error) {
-      console.error("Erreur lors de la génération du PDF :", error);
-      alert("Une erreur est survenue lors de la création du PDF.");
+      const errorMsg = "Erreur lors de la génération du PDF.";
+      console.error(errorMsg, error);
+      addNotification(errorMsg, TOAST_TYPES.ERROR);
     } finally {
       setIsGenerating(false);
     }
@@ -93,11 +68,11 @@ const PDFGenerator = ({
   return (
     <Button onClick={handleGeneratePdf} disabled={isGenerating} {...buttonProps}>
       {isGenerating ? (
-        <Loader size="sm" showText={false} variant="light" />
+        <Loader size="sm" />
       ) : (
         <>
-          {icon}
-          {buttonText}
+          <FileEarmarkPdf className="me-2" />
+          {children}
         </>
       )}
     </Button>

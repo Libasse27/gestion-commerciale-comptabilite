@@ -1,90 +1,55 @@
+// server/models/commercial/Produit.js
 // ==============================================================================
 //                Modèle Mongoose pour les Produits et Services
-//
-// MISE À JOUR : Le champ `categorie` est maintenant une référence (`ref`) vers
-// le modèle `Categorie` pour permettre une structuration hiérarchique du catalogue.
 // ==============================================================================
 
 const mongoose = require('mongoose');
+const numerotationService = require('../../services/system/numerotationService');
 
 const produitSchema = new mongoose.Schema(
   {
-    /**
-     * Le nom du produit ou du service.
-     */
     nom: {
       type: String,
       required: [true, 'Le nom du produit est obligatoire.'],
       trim: true,
       unique: true,
     },
-
-    /**
-     * Le code ou la référence unique du produit (SKU).
-     */
     reference: {
       type: String,
       unique: true,
-      sparse: true,
-      trim: true,
       uppercase: true,
+      trim: true,
     },
-
-    /**
-     * Description détaillée du produit/service.
-     */
     description: {
       type: String,
       trim: true,
     },
-
-    /**
-     * Type de produit pour distinguer les biens physiques des services.
-     */
     type: {
       type: String,
       required: true,
       enum: ['Produit', 'Service'],
       default: 'Produit',
     },
-
-    /**
-     * Catégorie du produit.
-     * C'est maintenant une référence à un document de la collection 'Categorie'.
-     */
     categorie: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Categorie', // Fait le lien avec le modèle Categorie
-      required: false, // Changez à `true` si une catégorie est toujours obligatoire
+      ref: 'Categorie',
     },
-
-    /**
-     * Informations sur les prix et les coûts.
-     */
-    prixVente: {
+    prixVenteHT: {
       type: Number,
       required: [true, 'Le prix de vente est obligatoire.'],
       default: 0,
       min: 0,
     },
-    coutAchat: {
+    coutAchatHT: {
       type: Number,
       default: 0,
       min: 0,
     },
-
-    /**
-     * Taux de TVA applicable à ce produit.
-     */
     tauxTVA: {
       type: Number,
       default: 18,
       min: 0,
     },
-
-    /**
-     * Gestion des stocks.
-     */
     suiviStock: {
       type: Boolean,
       default: function() { return this.type === 'Produit'; }
@@ -92,23 +57,28 @@ const produitSchema = new mongoose.Schema(
     quantiteEnStock: {
       type: Number,
       default: 0,
-      min: 0,
+      validate: {
+        validator: function(value) {
+          // La quantité en stock ne peut pas être négative si le suivi est activé
+          return !this.suiviStock || value >= 0;
+        },
+        message: 'La quantité en stock ne peut pas être négative.'
+      }
     },
     seuilAlerteStock: {
       type: Number,
       default: 0,
       min: 0,
     },
-    
-    /**
-     * Référence à l'utilisateur qui a créé ce produit.
-     */
     creePar: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
     },
-
+    modifiePar: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
     isActive: {
       type: Boolean,
       default: true,
@@ -120,9 +90,22 @@ const produitSchema = new mongoose.Schema(
   }
 );
 
-// Index pour accélérer les recherches par nom et référence
-produitSchema.index({ nom: 'text', reference: 'text' });
+// --- HOOK PRE-SAVE pour la numérotation automatique de la référence ---
+produitSchema.pre('save', async function(next) {
+  if (this.isNew && !this.reference) {
+    try {
+      this.reference = await numerotationService.getNextNumero('produit');
+    } catch (error) {
+      return next(error);
+    }
+  }
+  next();
+});
 
-const Produit = mongoose.model('Produit', produitSchema);
+produitSchema.index({ nom: 'text', reference: 'text' });
+produitSchema.index({ categorie: 1 });
+
+
+const Produit = mongoose.models.Produit || mongoose.model('Produit', produitSchema);
 
 module.exports = Produit;

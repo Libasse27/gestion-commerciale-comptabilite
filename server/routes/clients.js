@@ -1,64 +1,53 @@
-// ==============================================================================
-//           Routeur pour les Ressources Clients (/api/v1/clients)
-//
-// MISE À JOUR : Ajout d'une route spécifique pour l'export des données au
-// format Excel.
-// ==============================================================================
-
+// server/routes/clients.js
 const express = require('express');
-
-// --- Importation des Contrôleurs et Middlewares ---
 const clientController = require('../controllers/commercial/clientController');
-const authMiddleware = require('../middleware/auth');
+const { protect } = require('../middleware/auth'); // Renommé en 'protect' pour la clarté
 const { checkPermission } = require('../middleware/permissions');
+// Importer les validateurs si nécessaire
+const { body } = require('express-validator');
+const { handleValidationErrors } = require('../middleware/validation');
 
-// --- Initialisation du Routeur ---
 const router = express.Router();
 
+// Appliquer le middleware d'authentification à toutes les routes de ce fichier
+router.use(protect);
 
-// --- Application du Middleware d'Authentification Global au Routeur ---
-router.use(authMiddleware);
-
-
-// --- Définition des Routes ---
-
-// Routes pour la collection ( / )
-router
-  .route('/')
-  .post(
-    checkPermission('create:client'),
-    clientController.createClient
-  )
-  .get(
-    checkPermission('read:client'),
-    clientController.getAllClients
-  );
-
-// --- Route d'Action Spécifique : Export ---
-// Cette route doit être déclarée AVANT la route générique '/:id' pour être
-// correctement interceptée par Express.
+// Route d'export
 router.get(
     '/export/excel',
-    checkPermission('read:client'), // La permission de lire les clients suffit pour les exporter
+    checkPermission('client:read'),
     clientController.exportClients
 );
 
-// Routes pour un document spécifique ( /:id )
-router
-  .route('/:id')
+// Routes pour la collection /
+router.route('/')
+  .post(
+    checkPermission('client:create'),
+    [ // Ajouter la validation ici
+        body('nom', 'Le nom du client est obligatoire.').not().isEmpty().trim(),
+        body('email', 'Veuillez fournir un email valide.').optional({ checkFalsy: true }).isEmail().normalizeEmail(),
+    ],
+    handleValidationErrors,
+    clientController.createClient
+  )
   .get(
-    checkPermission('read:client'),
+    checkPermission('client:read'),
+    clientController.getAllClients
+  );
+
+// Routes pour un document spécifique /:id
+router.route('/:id')
+  .get(
+    checkPermission('client:read'),
     clientController.getClientById
   )
   .patch(
-    checkPermission('update:client'),
+    checkPermission('client:update'),
     clientController.updateClient
   )
   .delete(
-    checkPermission('delete:client'),
+    checkPermission('client:delete'),
     clientController.deleteClient
   );
 
-
-// --- Exportation du Routeur ---
 module.exports = router;

@@ -1,3 +1,4 @@
+// server/models/system/Notification.js
 // ==============================================================================
 //           Modèle Mongoose pour les Notifications Utilisateur
 //
@@ -22,7 +23,7 @@ const notificationSchema = new mongoose.Schema(
     },
     
     /**
-     * Le type de notification, pour un affichage ou un traitement différent.
+     * Le type de notification, pour un affichage ou un traitement différent sur le frontend.
      */
     type: {
         type: String,
@@ -47,7 +48,7 @@ const notificationSchema = new mongoose.Schema(
     },
 
     /**
-     * Le statut de la notification.
+     * Le statut de la notification, pour la gestion de l'affichage dans l'UI.
      */
     statut: {
         type: String,
@@ -60,8 +61,8 @@ const notificationSchema = new mongoose.Schema(
     },
     
     /**
-     * (Optionnel) Un lien vers la ressource concernée par la notification.
-     * Ex: Un lien direct vers la facture qui vient d'être créée.
+     * (Optionnel) Un lien relatif vers la ressource concernée par la notification.
+     * Ex: '/ventes/factures/60b8d295f1d2b0e6d8c3e4a5'
      */
     lien: {
         type: String,
@@ -69,16 +70,17 @@ const notificationSchema = new mongoose.Schema(
     }
   },
   {
-    timestamps: { createdAt: true, updatedAt: false },
+    timestamps: { createdAt: true, updatedAt: false }, // Seul createdAt est pertinent
     collection: 'system_notifications',
   }
 );
 
 
-// Index pour récupérer rapidement les notifications non lues d'un utilisateur
+// Index optimisé pour la requête la plus fréquente :
+// "Trouver les notifications non lues d'un utilisateur, triées par date".
 notificationSchema.index({ destinataire: 1, statut: 1, createdAt: -1 });
 
 
-const Notification = mongoose.model('Notification', notificationSchema);
+const Notification = mongoose.models.Notification || mongoose.model('Notification', notificationSchema);
 
 module.exports = Notification;

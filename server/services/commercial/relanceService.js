@@ -1,101 +1,109 @@
-// ==============================================================================
-//           Service de Gestion des Relances Automatiques
-//
-// MISE À JOUR : Ce service délègue maintenant la composition et l'envoi des
-// emails au `emailService`, se concentrant uniquement sur la logique métier
-// de la relance (quand et pourquoi relancer).
-// ==============================================================================
-
+// server/services/commercial/relanceService.js
 const Facture = require('../../models/commercial/Facture');
 const Relance = require('../../models/paiements/Relance');
 const { DOCUMENT_STATUS } = require('../../utils/constants');
-const emailService = require('../notifications/emailService'); // Import du service email
+const emailService = require('../notifications/emailService');
+const smsService = require('../notifications/smsService'); // Importer le service SMS
 const { logger } = require('../../middleware/logger');
 
 /**
- * Identifie les factures en retard et met à jour leur statut.
+ * Met à jour le statut des factures dont l'échéance est dépassée.
  * @private
  */
 async function _findAndUpdateOverdueInvoices() {
   const today = new Date();
-  
-  const overdueInvoices = await Facture.find({
-    statut: { $in: [DOCUMENT_STATUS.ENVOYE, DOCUMENT_STATUS.PARTIELLEMENT_PAYEE, DOCUMENT_STATUS.EN_RETARD] },
+  today.setHours(0, 0, 0, 0);
+
+  // Étape 1 : Identifier les factures qui VIENNENT d'être en retard
+  const invoicesToUpdate = await Facture.find({
+    statut: { $in: [DOCUMENT_STATUS.ENVOYE, DOCUMENT_STATUS.PARTIELLEMENT_PAYEE] },
     dateEcheance: { $lt: today }
-  }).populate('client', 'nom email');
+  }).select('_id').lean();
 
-  for (const invoice of overdueInvoices) {
-    if (invoice.statut !== DOCUMENT_STATUS.EN_RETARD) {
-      invoice.statut = DOCUMENT_STATUS.EN_RETARD;
-      await invoice.save();
-    }
+  if (invoicesToUpdate.length > 0) {
+      const ids = invoicesToUpdate.map(inv => inv._id);
+      await Facture.updateMany({ _id: { $in: ids } }, { $set: { statut: DOCUMENT_STATUS.EN_RETARD } });
+      logger.info(`${ids.length} facture(s) ont été marquées comme "En retard".`);
   }
+  
+  // Étape 2 : Renvoyer TOUTES les factures en retard (les anciennes + les nouvelles)
+  return Facture.find({ statut: DOCUMENT_STATUS.EN_RETARD }).populate('client', 'nom email telephone').lean();
+}
 
-  return overdueInvoices;
+/**
+ * Envoie une notification de relance (Email ou SMS) et l'enregistre.
+ * @private
+ */
+async function _sendReminder(facture, reminderLevel) {
+  const { client } = facture;
+  let method = null;
+
+  try {
+    if (client.email) {
+      method = 'Email';
+      await emailService.sendRelanceFacture(facture, client, reminderLevel);
+    } else if (client.telephone) {
+      method = 'SMS';
+      await smsService.sendRelanceFacture(client, facture);
+    } else {
+      logger.warn(`Aucun contact (email/téléphone) pour la relance de la facture ${facture.numero}.`);
+      return;
+    }
+
+    await Relance.create({
+      client: client._id,
+      facture: facture._id,
+      niveau: reminderLevel,
+      methode: method,
+    });
+
+  } catch (error) {
+    logger.error(`Échec de l'envoi de la relance (méthode: ${method}) pour la facture ${facture.numero}.`, { error });
+  }
 }
 
 /**
  * Traite une facture en retard pour déterminer si une relance doit être envoyée.
  * @private
  */
-async function _processReminderForInvoice(facture) {
-  if (!facture.client || !facture.client.email) {
-    logger.warn(`Impossible de relancer la facture ${facture.numero} : client ou email manquant.`);
-    return;
-  }
+async function _processInvoiceForReminder(facture) {
+  const [lastReminder] = await Relance.find({ facture: facture._id }).sort({ createdAt: -1 }).limit(1).lean();
   
-  const [lastReminder] = await Relance.find({ facture: facture._id }).sort({ createdAt: -1 }).limit(1);
-  
-  // Règle métier : ne pas envoyer une nouvelle relance si la dernière date de moins de 7 jours
-  const minDaysBetweenReminders = 7;
+  const minDaysBetweenReminders = 7; // Règle métier
   if (lastReminder) {
-      const daysSinceLastReminder = (new Date() - lastReminder.createdAt) / (1000 * 60 * 60 * 24);
-      if (daysSinceLastReminder < minDaysBetweenReminders) {
-          logger.info(`Relance pour la facture ${facture.numero} ignorée (dernière relance il y a ${Math.floor(daysSinceLastReminder)} jours).`);
-          return;
+      const daysSince = (new Date() - new Date(lastReminder.createdAt)) / (1000 * 60 * 60 * 24);
+      if (daysSince < minDaysBetweenReminders) {
+          return; // Pas assez de temps écoulé
       }
   }
 
   const reminderLevel = lastReminder ? lastReminder.niveau + 1 : 1;
-
-  // Déléguer l'envoi de l'email
-  // Le emailService pourrait lui-même contenir la logique du switch/case
-  // pour adapter le template en fonction du niveau.
-  if (reminderLevel <= 2) { // On n'envoie que 2 relances automatiques
-    await emailService.sendRelanceFacture(facture, facture.client, reminderLevel);
-
-    // Enregistrer l'action de relance dans l'historique
-    await Relance.create({
-      client: facture.client._id,
-      facture: facture._id,
-      niveau: reminderLevel,
-    });
-  } else {
-      logger.warn(`La facture ${facture.numero} a atteint le niveau de relance maximum (${reminderLevel - 1}). Action manuelle requise.`);
+  const maxAutomaticReminders = 3; // Règle métier
+  if (reminderLevel > maxAutomaticReminders) {
+    logger.warn(`Facture ${facture.numero}: Niveau de relance max (${maxAutomaticReminders}) atteint. Action manuelle requise.`);
+    return;
   }
+  
+  await _sendReminder(facture, reminderLevel);
 }
 
 /**
- * Fonction principale du service, appelée par le cron job.
+ * Fonction principale du service, appelée par un cron job.
  */
 async function runAutomatedReminders() {
   logger.info('--- Démarrage de la tâche de relances automatiques ---');
   try {
-    const invoicesToRemind = await _findAndUpdateOverdueInvoices();
-    
-    if (invoicesToRemind.length === 0) {
-      logger.info('Aucune facture en retard à traiter aujourd\'hui.');
+    const invoicesToProcess = await _findAndUpdateOverdueInvoices();
+    if (invoicesToProcess.length === 0) {
+      logger.info('Aucune facture en retard à traiter.');
       return;
     }
     
-    logger.info(`${invoicesToRemind.length} facture(s) en retard identifiée(s). Traitement en cours...`);
-
-    for (const invoice of invoicesToRemind) {
-      await _processReminderForInvoice(invoice);
-    }
+    logger.info(`${invoicesToProcess.length} facture(s) en retard. Traitement en cours...`);
+    await Promise.all(invoicesToProcess.map(_processInvoiceForReminder));
     
   } catch (error) {
-    logger.error('Une erreur est survenue dans le service de relance automatique.', { error });
+    logger.error('Erreur dans le service de relance.', { error });
   } finally {
     logger.info('--- Tâche de relances automatiques terminée ---');
   }

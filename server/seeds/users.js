@@ -1,127 +1,57 @@
-// ==============================================================================
-//           Seeder pour les Utilisateurs et leur Assignation de Rôle
-//
-// Rôle : Ce script popule la base de données avec un jeu d'utilisateurs
-// prédéfinis, chacun associé à un rôle spécifique.
-//
-// NOTE IMPORTANTE : Ce script doit être exécuté APRES les seeders pour
-// les permissions et les rôles, car il dépend de l'existence des rôles
-// dans la base de données.
-//
-// Usage : `node server/seeds/users.js` ou via un script npm `npm run seed:users`
-// ==============================================================================
-
-const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-const bcrypt = require('bcryptjs');
-
-// --- Chargement des dépendances et modèles ---
-// Spécifier le chemin vers le fichier .env du backend
-dotenv.config({ path: './server/.env' });
-
+// server/seeds/users.js
 const User = require('../models/auth/User');
 const Role = require('../models/auth/Role');
+const { logger } = require('../middleware/logger');
 
-// --- Données des utilisateurs à créer ---
-// Les mots de passe sont en clair ici mais seront hashés avant l'insertion.
-// ATTENTION : N'utilisez jamais ces mots de passe en production.
 const usersData = [
-  {
-    firstName: 'Admin',
-    lastName: 'Principal',
-    email: 'admin@erp.sn',
-    password: 'password123',
-    roleName: 'Admin', // Le nom du rôle à chercher dans la DB
-    isActive: true,
-  },
-  {
-    firstName: 'Jean',
-    lastName: 'Comptable',
-    email: 'comptable@erp.sn',
-    password: 'password123',
-    roleName: 'Comptable',
-    isActive: true,
-  },
-  {
-    firstName: 'Awa',
-    lastName: 'Commerciale',
-    email: 'commercial@erp.sn',
-    password: 'password123',
-    roleName: 'Commercial',
-    isActive: true,
-  },
-  {
-    firstName: 'Moussa',
-    lastName: 'Vendeur',
-    email: 'vendeur@erp.sn',
-    password: 'password123',
-    roleName: 'Vendeur',
-    isActive: true,
-  },
+  { firstName: 'Admin', lastName: 'Principal', email: 'admin@erp.sn', password: 'Password123!', roleName: 'Admin', isActive: true },
+  { firstName: 'Jean', lastName: 'Comptable', email: 'comptable@erp.sn', password: 'Password123!', roleName: 'Comptable', isActive: true },
+  { firstName: 'Awa', lastName: 'Commerciale', email: 'commercial@erp.sn', password: 'Password123!', roleName: 'Commercial', isActive: true },
+  { firstName: 'Moussa', lastName: 'Vendeur', email: 'vendeur@erp.sn', password: 'Password123!', roleName: 'Vendeur', isActive: true },
 ];
 
-
-/**
- * Fonction principale du seeder.
- */
-const seedUsers = async () => {
-  try {
-    // --- 1. Connexion à la base de données ---
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('✅ Connexion à MongoDB réussie pour le seeder utilisateurs.');
-
-    // --- 2. Nettoyage de la collection Users ---
+const seedUsers = async (clean = true) => {
+  if (clean) {
     await User.deleteMany({});
-    console.log('🧹 Collection "users" nettoyée.');
+    logger.info('Collection "users" nettoyée.');
+  }
 
-    // --- 3. Récupération des rôles depuis la DB ---
-    const roles = await Role.find({});
+  try {
+    const roles = await Role.find({}).lean();
     if (roles.length === 0) {
-      throw new Error("Aucun rôle trouvé dans la base de données. Veuillez d'abord lancer le seeder des rôles.");
+      throw new Error("Aucun rôle trouvé. Veuillez d'abord amorcer les rôles.");
     }
 
-    // Création d'une map pour un accès facile à l'ID du rôle par son nom
-    const roleMap = roles.reduce((map, role) => {
-      map[role.name] = role._id;
-      return map;
-    }, {});
+    const roleMap = roles.reduce((map, role) => ({ ...map, [role.name]: role._id }), {});
     
-    // --- 4. Préparation et création des utilisateurs ---
-    const usersToCreate = [];
+    let createdCount = 0;
     for (const userData of usersData) {
       const roleId = roleMap[userData.roleName];
       if (!roleId) {
-        console.warn(`⚠️ Rôle "${userData.roleName}" non trouvé. L'utilisateur "${userData.email}" sera ignoré.`);
+        logger.warn(`Rôle "${userData.roleName}" non trouvé pour l'utilisateur "${userData.email}". Il sera ignoré.`);
         continue;
       }
-      
-      // Hashage du mot de passe
-      const salt = await bcrypt.genSalt(12);
-      const hashedPassword = await bcrypt.hash(userData.password, salt);
 
-      usersToCreate.push({
+      // Utiliser User.create() DÉCLENCHE les hooks pre('save')
+      await User.create({
         ...userData,
-        password: hashedPassword,
         role: roleId,
       });
+      createdCount++;
     }
 
-    // --- 5. Insertion des utilisateurs en base de données ---
-    await User.insertMany(usersToCreate);
-    console.log(`✅ ${usersToCreate.length} utilisateurs ont été créés avec succès.`);
-    console.log('--- Liste des utilisateurs créés ---');
-    usersToCreate.forEach(u => console.log(`- ${u.email} (Rôle: ${u.roleName})`));
-    
+    if (createdCount > 0) {
+        logger.info(`✅ ${createdCount} utilisateurs ont été créés (avec mots de passe hachés).`);
+    }
 
   } catch (error) {
-    console.error('❌ Erreur lors du seeding des utilisateurs :', error);
-    process.exit(1); // Arrête le script en cas d'erreur
-  } finally {
-    // --- 6. Fermeture de la connexion ---
-    await mongoose.connection.close();
-    console.log('🔌 Connexion à MongoDB fermée.');
+    if (error.code === 11000) {
+        logger.warn('Certains utilisateurs existaient déjà. Opération terminée.');
+    } else {
+        logger.error('❌ Erreur lors de l\'amorçage des utilisateurs :', error);
+        throw error;
+    }
   }
 };
 
-// --- Lancement du Seeder ---
-seedUsers();
+module.exports = seedUsers;

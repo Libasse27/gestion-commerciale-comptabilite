@@ -1,115 +1,89 @@
-// ==============================================================================
-//                Composant Menu Latéral de Navigation (Sidebar)
-//
-// Affiche le menu de navigation principal de l'application. Les liens affichés
-// sont conditionnés par les permissions de l'utilisateur connecté, récupérées
-// via le hook `usePermissions`.
-// ==============================================================================
+// client/src/components/common/Sidebar.jsx
 import React from 'react';
 import { useDispatch } from 'react-redux';
 import { Nav } from 'react-bootstrap';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Speedometer2, PeopleFill, BoxSeam, Receipt, BookFill,
-  BarChartFill, GearFill, BoxArrowLeft, Building, Folder
+  BarChartFill, GearFill, BoxArrowLeft, Building, Folder,
+  Bank, Box, JournalCheck
 } from 'react-bootstrap-icons';
-
 import { logout } from '../../store/slices/authSlice';
 import { usePermissions } from '../../hooks/usePermissions';
 
-// --- Sous-composant pour un lien de navigation ---
+// Sous-composants pour la lisibilité
 const NavItem = ({ to, icon: Icon, text }) => (
-  <Nav.Item>
-    <Nav.Link as={NavLink} to={to} end className="d-flex align-items-center">
-      <Icon size={20} className="nav-icon" />
+  <Nav.Item as="li">
+    <Nav.Link as={NavLink} to={to} end className="d-flex align-items-center gap-2">
+      <Icon size={18} />
       <span>{text}</span>
     </Nav.Link>
   </Nav.Item>
 );
 
-// --- Sous-composant "gardien" pour protéger les liens ---
-const ProtectedNavItem = ({ requiredPermission, children }) => {
-  const { hasPermission } = usePermissions();
-  return hasPermission(requiredPermission) ? children : null;
+const Protected = ({ children, permission, any = false }) => {
+  const { hasPermission, hasAnyPermission } = usePermissions();
+  const show = any ? hasAnyPermission(permission) : hasPermission(permission);
+  return show ? children : null;
 };
 
-// --- Sous-composant pour un titre de section ---
-const NavSectionTitle = ({ text }) => <div className="sidebar-nav-title">{text}</div>;
+const NavSectionTitle = ({ text }) => <h6 className="sidebar-heading px-3 mt-4 mb-1 text-muted text-uppercase">{text}</h6>;
 
-// ==========================================================
-// --- Composant Principal Sidebar ---
-// ==========================================================
 const Sidebar = () => {
   const dispatch = useDispatch();
-  const { hasAnyPermission } = usePermissions();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     dispatch(logout());
-    // La redirection est gérée par PrivateRoute
+    navigate('/login', { replace: true });
   };
 
-  // On détermine si l'utilisateur a le droit de voir au moins un élément de chaque section
-  const canSeeCommercial = hasAnyPermission(['client:read', 'fournisseur:read', 'produit:read', 'vente:read']);
-  const canSeeComptabilite = hasAnyPermission(['comptabilite:read']);
-  const canSeeAnalyse = hasAnyPermission(['rapport:read']);
-
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header">
-        <NavLink to="/dashboard" className="app-logo">
-          {import.meta.env.VITE_APP_NAME || 'ERP Sénégal'}
-        </NavLink>
-      </div>
-      
-      <Nav className="flex-column sidebar-nav">
-        {/* --- Section Principale --- */}
-        <NavItem to="/dashboard" icon={Speedometer2} text="Tableau de bord" />
+    <nav className="sidebar bg-light border-end">
+      <div className="sidebar-sticky">
+        <h5 className="sidebar-heading px-3 mt-3 mb-3">
+            <NavLink to="/dashboard" className="text-decoration-none text-dark fw-bold">
+                {import.meta.env.VITE_APP_NAME || 'ERP Sénégal'}
+            </NavLink>
+        </h5>
+        <Nav className="flex-column" as="ul">
+          <NavItem to="/dashboard" icon={Speedometer2} text="Tableau de bord" />
 
-        {/* --- Section Gestion Commerciale (conditionnelle) --- */}
-        {canSeeCommercial && <NavSectionTitle text="Gestion Commerciale" />}
-        <ProtectedNavItem requiredPermission="client:read">
-          <NavItem to="/clients" icon={PeopleFill} text="Clients" />
-        </ProtectedNavItem>
-        <ProtectedNavItem requiredPermission="fournisseur:read">
-          <NavItem to="/fournisseurs" icon={Building} text="Fournisseurs" />
-        </ProtectedNavItem>
-        <ProtectedNavItem requiredPermission="produit:read">
-          <NavItem to="/produits" icon={BoxSeam} text="Produits & Services" />
-        </ProtectedNavItem>
-        <ProtectedNavItem requiredPermission="vente:read">
-          <NavItem to="/ventes" icon={Receipt} text="Ventes" />
-        </ProtectedNavItem>
+          <Protected permission={['client:read', 'fournisseur:read', 'produit:read', 'vente:read']} any>
+              <NavSectionTitle text="Commercial" />
+          </Protected>
+          <Protected permission="client:read"><NavItem to="/clients" icon={PeopleFill} text="Clients" /></Protected>
+          <Protected permission="fournisseur:read"><NavItem to="/fournisseurs" icon={Building} text="Fournisseurs" /></Protected>
+          <Protected permission="produit:read"><NavItem to="/produits" icon={BoxSeam} text="Catalogue" /></Protected>
+          <Protected permission="vente:read"><NavItem to="/ventes" icon={Receipt} text="Ventes" /></Protected>
 
-        {/* --- Section Comptabilité (conditionnelle) --- */}
-        {canSeeComptabilite && (
-          <>
+          <Protected permission="stock:read" any>
+            <NavSectionTitle text="Stock" />
+            <NavItem to="/stock" icon={Box} text="État du Stock" />
+          </Protected>
+
+          <Protected permission="comptabilite:read" any>
             <NavSectionTitle text="Comptabilité" />
-            <NavItem to="/comptabilite" icon={BookFill} text="Journaux" />
-          </>
-        )}
-
-        {/* --- Section Analyse (conditionnelle) --- */}
-        {canSeeAnalyse && (
-          <>
-            <NavSectionTitle text="Analyse" />
-            <NavItem to="/rapports" icon={BarChartFill} text="Rapports" />
-          </>
-        )}
-      </Nav>
-      
-      {/* --- Section du Bas (collée en bas) --- */}
-      <div className="sidebar-footer">
-        <ProtectedNavItem requiredPermission="settings:manage">
-          <NavItem to="/parametres" icon={GearFill} text="Paramètres" />
-        </ProtectedNavItem>
-        <Nav.Item>
-          <Nav.Link onClick={handleLogout} className="text-danger">
-            <BoxArrowLeft size={20} className="nav-icon" />
-            <span>Déconnexion</span>
-          </Nav.Link>
-        </Nav.Item>
+            <NavItem to="/comptabilite/ecritures" icon={JournalCheck} text="Écritures" />
+            <NavItem to="/comptabilite/rapprochement" icon={Bank} text="Rapprochement" />
+          </Protected>
+        </Nav>
       </div>
-    </aside>
+      
+      <div className="sidebar-footer">
+        <Nav className="flex-column" as="ul">
+            <Protected permission="system:manage">
+                <NavItem to="/parametres" icon={GearFill} text="Paramètres" />
+            </Protected>
+            <Nav.Item as="li">
+              <Nav.Link onClick={handleLogout} className="d-flex align-items-center gap-2 text-danger">
+                <BoxArrowLeft size={18} />
+                <span>Déconnexion</span>
+              </Nav.Link>
+            </Nav.Item>
+        </Nav>
+      </div>
+    </nav>
   );
 };
 

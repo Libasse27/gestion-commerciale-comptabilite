@@ -1,59 +1,33 @@
+// client/src/store/middleware/authMiddleware.js
 // ==============================================================================
-//           Middleware Redux pour la Gestion des Effets de Bord
-//                           de l'Authentification
+//           Middleware Redux pour les Effets de Bord de l'Auth
 //
-// Ce middleware intercepte les actions liées à l'authentification pour
-// déclencher des effets de bord (side effects), tels que :
-//   - Interagir avec le `localStorage` pour persister ou supprimer les tokens
-//     et les informations de l'utilisateur.
-//
-// Il permet de garder les reducers purs (sans effets de bord) et de
-// centraliser la logique de persistance de la session.
+// Ce middleware intercepte les actions d'authentification pour interagir
+// avec le `localStorage` et persister la session utilisateur.
 // ==============================================================================
 
-import {
-  saveToLocalStorage,
-  removeFromLocalStorage,
-} from '../../utils/helpers';
+import { saveToLocalStorage, removeFromLocalStorage } from '../../utils/helpers';
 import { LOCAL_STORAGE_KEYS } from '../../utils/constants';
-// Importez le thunk `login` et l'action `logout` directement depuis le slice.
-// Note : Le nom du thunk est `loginUser` dans notre slice, pas `login`.
-import { loginUser, logout } from '../slices/authSlice';
+import { login, register, logout } from '../slices/authSlice';
 
-/**
- * Middleware qui gère les effets de bord de l'authentification.
- * La signature `(store) => (next) => (action)` est la structure standard.
- */
 const authMiddleware = (store) => (next) => (action) => {
-  // 1. Laisse d'abord l'action passer pour que le state Redux soit mis à jour par le reducer.
+  // Laisse d'abord l'action passer et mettre à jour le state.
   const result = next(action);
 
-  // 2. Intercepte l'action de succès (`fulfilled`) du thunk `loginUser`.
-  // `loginUser.fulfilled.match(action)` est la méthode correcte et la plus sûre
-  // pour réagir à une action asynchrone réussie créée avec `createAsyncThunk`.
-  if (loginUser.fulfilled.match(action)) {
-    // Le `payload` de cette action est ce qui est retourné par la fonction `login` du `authService`.
+  // Intercepte les actions de succès des thunks `login` et `register`.
+  if (login.fulfilled.match(action) || register.fulfilled.match(action)) {
     const { accessToken, user } = action.payload;
-
-    console.log('Auth Middleware: Connexion réussie, sauvegarde des données...');
-
-    // Le `refreshToken` est géré par un cookie httpOnly, on n'a pas besoin de le stocker ici.
-    // On ne stocke que les informations qui doivent être lues par le client.
-    saveToLocalStorage(LOCAL_STORAGE_KEYS.USER_INFO, {
-      token: accessToken,
-      ...user,
-    });
+    
+    // Persister les informations essentielles dans le localStorage.
+    saveToLocalStorage(LOCAL_STORAGE_KEYS.ACCESS_TOKEN, accessToken);
+    saveToLocalStorage(LOCAL_STORAGE_KEYS.USER_INFO, user);
   }
 
-  // 3. Intercepte l'action de déconnexion (`logout`).
+  // Intercepte l'action de déconnexion.
   if (logout.match(action)) {
-    console.log('Auth Middleware: Déconnexion, nettoyage du localStorage...');
-
-    // Nettoie le localStorage pour terminer la session côté client.
+    // Nettoyer le localStorage pour terminer la session.
+    removeFromLocalStorage(LOCAL_STORAGE_KEYS.ACCESS_TOKEN);
     removeFromLocalStorage(LOCAL_STORAGE_KEYS.USER_INFO);
-
-    // La redirection sera gérée par les composants de l'application qui réagissent
-    // à la mise à jour de l'état d'authentification.
   }
 
   return result;

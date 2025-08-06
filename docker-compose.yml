@@ -1,40 +1,24 @@
-# ==============================================================================
-#                 FICHIER DOCKER COMPOSE POUR L'ENVIRONNEMENT
-#                           DE DÉVELOPPEMENT
-#
-#   Usage:
-#     - Lancer tous les services en arrière-plan : docker compose up -d --build
-#     - Arrêter tous les services : docker compose down
-#     - Voir les logs : docker compose logs -f [nom-du-service]
-#
-# ==============================================================================
-
+# Fichier Docker Compose pour l'environnement de développement.
 version: '3.8'
 
 services:
-  # --- Service Base de Données MongoDB ---
+  # Base de données
   mongodb:
     image: mongo:6.0
     container_name: erp-mongodb-dev
     restart: unless-stopped
-    environment:
-      # Ces variables sont pour l'initialisation de la DB
-      # Elles doivent correspondre aux valeurs dans server/.env
-      MONGO_INITDB_ROOT_USERNAME: ${DB_USER:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASS:-password123}
-      MONGO_INITDB_DATABASE: ${DB_NAME:-erp_senegal}
     ports:
-      # Expose le port de la DB sur la machine hôte pour une connexion directe
       - "27017:27017"
     volumes:
-      # Persiste les données de la base de données entre les redémarrages
       - mongodb_data:/data/db
-      # Optionnel: pour peupler la DB avec des données initiales
-      # - ./server/seeds:/docker-entrypoint-initdb.d
+    environment:
+      # Utilisé pour l'initialisation de la base de données.
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASS:-password}
     networks:
       - erp-network
 
-  # --- Service de Cache Redis ---
+  # Cache
   redis:
     image: redis:7-alpine
     container_name: erp-redis-dev
@@ -46,47 +30,40 @@ services:
     networks:
       - erp-network
 
-  # --- Service Backend (API Node.js) ---
+  # API Backend
   server:
-    # Construit l'image à partir du Dockerfile dans le dossier ./server
-    build:
-      context: ./server
-      dockerfile: Dockerfile
+    build: ./server
     container_name: erp-server-dev
     restart: unless-stopped
-    # Charge les variables d'environnement depuis ce fichier
     env_file:
-      - ./server/.env
+      - ./server/.env # Charge les variables locales par défaut.
+    environment:
+      # Surcharge les variables critiques pour la communication entre conteneurs.
+      - MONGODB_URI=mongodb://${DB_USER:-admin}:${DB_PASS:-password}@mongodb:27017/erp_senegal?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=development
     ports:
-      # Expose le port de l'API
       - "5000:5000"
     volumes:
-      # Monte le code source du serveur dans le conteneur
-      # Les changements dans le code local sont reflétés instantanément (hot-reload)
-      - ./server:/app
-      # Empêche le node_modules local de masquer celui du conteneur
-      - /app/node_modules
+      - ./server:/app         # Hot-reloading du code source.
+      - /app/node_modules   # Isole les node_modules du conteneur.
     depends_on:
-      # S'assure que la DB et le cache sont démarrés avant le serveur
       - mongodb
       - redis
     networks:
       - erp-network
 
-  # --- Service Frontend (Application React) ---
+  # Application Frontend
   client:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
+    build: ./client
     container_name: erp-client-dev
     restart: unless-stopped
     env_file:
       - ./client/.env
     ports:
-      # Expose le port du serveur de développement React
+      # Le port par défaut de Vite est 5173, et non 3000.
       - "3000:3000"
     volumes:
-      # Monte le code source du client pour le hot-reloading
       - ./client:/app
       - /app/node_modules
     depends_on:
@@ -94,14 +71,12 @@ services:
     networks:
       - erp-network
 
-# --- Volumes Nommés ---
-# Permet la persistance des données
+# Volumes pour la persistance des données.
 volumes:
   mongodb_data:
   redis_data:
 
-# --- Réseau Personnalisé ---
-# Permet aux conteneurs de communiquer entre eux en utilisant leur nom de service
+# Réseau partagé pour la communication entre services.
 networks:
   erp-network:
     driver: bridge

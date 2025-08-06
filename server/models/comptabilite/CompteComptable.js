@@ -1,79 +1,38 @@
-// ==============================================================================
-//           Modèle Mongoose pour les Comptes Comptables (Plan Comptable)
-//
-// Ce modèle définit la structure d'un compte individuel au sein du plan comptable
-// de l'entreprise. Il est conçu pour être compatible avec les standards du
-// SYSCOHADA / OHADA.
-// ==============================================================================
-
+// server/models/comptabilite/CompteComptable.js
 const mongoose = require('mongoose');
 
 const compteComptableSchema = new mongoose.Schema(
   {
-    /**
-     * Le numéro du compte (ex: '411', '701', '601').
-     * C'est l'identifiant principal et il doit être unique.
-     */
     numero: {
       type: String,
       required: [true, 'Le numéro de compte est obligatoire.'],
-      unique: true,
+      // unique: true, // On retire l'option ici
       trim: true,
     },
-
-    /**
-     * L'intitulé ou le libellé du compte (ex: "Clients", "Ventes de marchandises").
-     */
     libelle: {
       type: String,
       required: [true, 'Le libellé du compte est obligatoire.'],
       trim: true,
     },
-    
-    /**
-     * La classe du compte selon le plan SYSCOHADA (de 1 à 9).
-     * Ex: 1-Comptes de ressources durables, 4-Comptes de tiers, 7-Comptes de produits.
-     * Ce champ est calculé automatiquement à partir du premier chiffre du numéro.
-     */
     classe: {
         type: Number,
-        min: 1,
-        max: 9,
+        min: 1, max: 9,
+        required: true,
     },
-
-    /**
-     * Le sens par défaut du compte (Débit ou Crédit).
-     * Ex: Un compte de charge (Classe 6) augmente au Débit.
-     *     Un compte de produit (Classe 7) augmente au Crédit.
-     */
     sens: {
         type: String,
         enum: ['Debit', 'Credit'],
+        required: true,
     },
-    
-    /**
-     * Type de compte pour des logiques de gestion spécifiques.
-     * - Tiers: Représente un partenaire (Client, Fournisseur).
-     * - Tresorerie: Compte bancaire, caisse.
-     * - Bilan: Apparaît au bilan.
-     * - Resultat: Apparaît au compte de résultat.
-     */
     type: {
         type: String,
         enum: ['Tiers', 'Tresorerie', 'Bilan', 'Resultat', 'Autre'],
         required: true,
     },
-
-    /**
-     * Indique si le compte est "lettrable".
-     * Seuls les comptes lettrables (généralement les comptes de tiers) peuvent
-     * faire l'objet d'un lettrage pour rapprocher débits et crédits.
-     */
     estLettrable: {
         type: Boolean,
         default: false,
     },
-    
     isActive: {
         type: Boolean,
         default: true,
@@ -85,24 +44,26 @@ const compteComptableSchema = new mongoose.Schema(
   }
 );
 
-
-// --- HOOK PRE-SAVE ---
-// Pour calculer automatiquement la classe du compte à partir de son numéro.
 compteComptableSchema.pre('save', function(next) {
     if (this.isModified('numero') || this.isNew) {
         if (this.numero && this.numero.length > 0) {
-            this.classe = parseInt(this.numero.charAt(0), 10);
+            const classe = parseInt(this.numero.charAt(0), 10);
+            if (!isNaN(classe) && classe >= 1 && classe <= 9) {
+                this.classe = classe;
+            } else {
+                return next(new Error("Le numéro de compte doit commencer par un chiffre de 1 à 9."));
+            }
         }
     }
     next();
 });
 
-
-// Index pour accélérer les recherches par numéro et libellé
-compteComptableSchema.index({ numero: 1 });
+// === DÉCLARATION EXPLICITE DES INDEX ===
+// On déclare l'index unique ici, ce qui est plus propre
+compteComptableSchema.index({ numero: 1 }, { unique: true });
 compteComptableSchema.index({ libelle: 'text' });
+// =====================================
 
-
-const CompteComptable = mongoose.model('CompteComptable', compteComptableSchema);
+const CompteComptable = mongoose.models.CompteComptable || mongoose.model('CompteComptable', compteComptableSchema);
 
 module.exports = CompteComptable;

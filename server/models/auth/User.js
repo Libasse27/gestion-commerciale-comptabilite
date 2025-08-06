@@ -1,3 +1,4 @@
+// server/models/auth/User.js
 // ==============================================================================
 //                  Modèle Mongoose pour les Utilisateurs
 //
@@ -12,76 +13,47 @@
 
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { isStrongPassword } = require('../../utils/validators');
 
-/**
- * Schéma pour un Utilisateur.
- */
 const userSchema = new mongoose.Schema(
   {
-    /**
-     * Le prénom de l'utilisateur.
-     */
     firstName: {
       type: String,
       required: [true, 'Le prénom est obligatoire.'],
       trim: true,
     },
-
-    /**
-     * Le nom de famille de l'utilisateur.
-     */
     lastName: {
       type: String,
       required: [true, 'Le nom de famille est obligatoire.'],
       trim: true,
     },
-
-    /**
-     * L'adresse email de l'utilisateur, utilisée pour la connexion.
-     */
     email: {
       type: String,
       required: [true, "L'adresse email est obligatoire."],
       unique: true,
       lowercase: true,
       trim: true,
-      match: [
-        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-        'Veuillez fournir une adresse email valide.',
-      ],
+      match: [ /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Veuillez fournir une adresse email valide.' ],
     },
-
-    /**
-     * Le mot de passe haché de l'utilisateur.
-     */
     password: {
       type: String,
       required: [true, 'Le mot de passe est obligatoire.'],
       minlength: [8, 'Le mot de passe doit contenir au moins 8 caractères.'],
-      select: false,
+      validate: [isStrongPassword, 'Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial.'],
+      select: false, // Ne jamais renvoyer le mot de passe dans les requêtes
     },
-
-    /**
-     * La référence vers le rôle de l'utilisateur.
-     */
     role: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Role',
       required: [true, "Le rôle de l'utilisateur est obligatoire."],
     },
-
-    /**
-     * Statut du compte utilisateur.
-     */
     isActive: {
       type: Boolean,
       default: true,
     },
-
-    /**
-     * Date du dernier changement de mot de passe.
-     */
     passwordChangedAt: Date,
+    passwordResetToken: String,
+    passwordResetExpires: Date,
   },
   {
     timestamps: true,
@@ -93,24 +65,22 @@ const userSchema = new mongoose.Schema(
 
 // --- VIRTUALS ---
 userSchema.virtual('fullName').get(function () {
-  if (!this.firstName || !this.lastName) {
-    return '';
-  }
+  if (!this.firstName || !this.lastName) return '';
   return `${this.firstName} ${this.lastName}`;
 });
-
 
 // --- MIDDLEWARE (HOOKS) MONGOOSE ---
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
+  
   const salt = await bcrypt.genSalt(12);
   this.password = await bcrypt.hash(this.password, salt);
+  
   if (!this.isNew) {
-    this.passwordChangedAt = Date.now() - 1000;
+    this.passwordChangedAt = Date.now() - 1000; // -1s pour éviter les problèmes de timing avec la création du JWT
   }
   next();
 });
-
 
 // --- MÉTHODES D'INSTANCE ---
 userSchema.methods.comparePassword = async function (candidatePassword) {
@@ -125,13 +95,6 @@ userSchema.methods.passwordChangedAfter = function (JWTTimestamp) {
   return false;
 };
 
-
-/**
- * ✅ MISE À JOUR APPLIQUÉE
- * On vérifie si le modèle 'User' a déjà été compilé avant de le créer.
- * Cette protection est la clé pour un développement stable avec des outils
- * comme Nodemon ou Vite qui rechargent les modules à la volée.
- */
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
 module.exports = User;

@@ -1,31 +1,36 @@
+// client/src/routes/Root.jsx
 // ==============================================================================
-//           Composant d'Aiguillage Racine (Root)
+//           Composant Racine de l'Application (Root)
 //
-// MISE À JOUR : Utilise maintenant l'état `status` de l'authentification pour
-// une gestion fiable du chargement initial, sans état local ni useEffect.
+// Ce composant sert de point d'entrée pour le rendu de toutes les routes.
+// C'est la coquille la plus externe de notre application après les providers.
+//
+// Il est l'endroit idéal pour placer une logique qui doit s'exécuter
+// une seule fois au chargement de l'application, comme la vérification
+// initiale de la session ou la configuration de bibliothèques globales.
 // ==============================================================================
 
 import React from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import Loader from '../components/common/Loader';
+import { Outlet } from 'react-router-dom';
 
 const Root = () => {
-  // 1. On récupère l'état d'authentification complet via notre hook.
-  // `status` peut être 'idle', 'loading', 'succeeded', ou 'failed'.
-  const { isAuthenticated, status } = useAuth();
+  // Pour l'instant, ce composant ne fait qu'afficher les routes enfants.
+  // On pourrait y ajouter un useEffect pour une logique d'initialisation.
+  // Exemple :
+  useEffect(() => {
+    //   dispatch(trySilentLogin()); // Tenter de rafraîchir le token au premier chargement
+  }, [dispatch]);
 
-  // 2. Tant que le statut est indéterminé ('idle') ou en cours de chargement ('loading'),
-  // on affiche un loader. Cela empêche toute redirection prématurée avant
-  // que l'état d'authentification initial ne soit connu.
-  if (status === 'idle' || status === 'loading') {
-    return <Loader fullscreen text="Chargement de l'application..." />;
-  }
-
-  // 3. Une fois le statut connu, on redirige en toute sécurité.
-  // L'option `replace` est cruciale pour que l'utilisateur ne puisse pas
-  // revenir à cette page d'aiguillage avec le bouton "précédent".
-  return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
+  return (
+    <>
+      {/* 
+        <Outlet /> est le placeholder où React Router va rendre la route 
+        qui correspond à l'URL actuelle. Ce sera soit les routes publiques, 
+        soit les routes privées.
+      */}
+      <Outlet />
+    </>
+  );
 };
 
 export default Root;

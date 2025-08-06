@@ -15,7 +15,7 @@ const mongoose = require('mongoose');
 const parametreFiscalSchema = new mongoose.Schema(
   {
     /**
-     * La clé unique du paramètre (non modifiable).
+     * La clé unique du paramètre (non modifiable après création).
      * Ex: 'TAUX_TVA_DEFAUT', 'CODE_REGIME_FISCAL'
      */
     cle: {
@@ -24,12 +24,13 @@ const parametreFiscalSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       uppercase: true,
+      immutable: true, // Empêche la modification de la clé après la création
     },
 
     /**
      * La valeur du paramètre.
      * Stockée en chaîne de caractères pour plus de flexibilité (peut être
-     * un nombre, un texte, un JSON...).
+     * un nombre, un texte, un JSON...). La conversion se fait au niveau du service.
      */
     valeur: {
       type: String,
@@ -38,7 +39,7 @@ const parametreFiscalSchema = new mongoose.Schema(
     },
 
     /**
-     * Une description lisible de ce que représente le paramètre.
+     * Une description lisible de ce que représente le paramètre et son impact.
      */
     description: {
       type: String,
@@ -47,11 +48,12 @@ const parametreFiscalSchema = new mongoose.Schema(
 
     /**
      * Le type de données de la valeur, pour aider le frontend à afficher le
-     * bon type de champ de saisie.
+     * bon type de champ de saisie et pour le backend à parser correctement la valeur.
      */
     type: {
       type: String,
       enum: ['Nombre', 'Texte', 'Booleen', 'JSON'],
+      required: true,
       default: 'Texte',
     },
     
@@ -69,6 +71,7 @@ const parametreFiscalSchema = new mongoose.Schema(
   }
 );
 
-const ParametreFiscal = mongoose.model('ParametreFiscal', parametreFiscalSchema);
+
+const ParametreFiscal = mongoose.models.ParametreFiscal || mongoose.model('ParametreFiscal', parametreFiscalSchema);
 
 module.exports = ParametreFiscal;

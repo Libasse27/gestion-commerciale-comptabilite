@@ -1,96 +1,53 @@
-// ==============================================================================
-//           Contrôleur pour la Comptabilité Générale
-//
-// Ce contrôleur gère les requêtes HTTP pour les opérations sur le plan comptable
-// et les consultations agrégées comme le Grand Livre.
-//
-// La gestion des écritures comptables est déléguée à `ecritureController.js`.
-// ==============================================================================
+'use strict';
+// server/controllers/comptabilite/comptabiliteController.js
 
-// --- Import des Modèles et Utils ---
+// ==============================================================================
+//           Contrôleur pour la Comptabilité
+// ==============================================================================
 const CompteComptable = require('../../models/comptabilite/CompteComptable');
-const EcritureComptable = require('../../models/comptabilite/EcritureComptable');
 const AppError = require('../../utils/appError');
 const asyncHandler = require('../../utils/asyncHandler');
+const APIFeatures = require('../../utils/apiFeatures');
+const grandLivreService = require('../../services/comptabilite/grandLivreService');
+const mongoose = require('mongoose');
 
-
-// ===============================================
-// --- Section: Plan Comptable (CRUD) ---
-// ===============================================
-
-/**
- * @desc    Récupérer tous les comptes du plan comptable
- * @route   GET /api/v1/comptabilite/plan-comptable
- * @access  Privé (permission: 'read:comptabilite')
- */
+// --- Plan Comptable ---
 exports.getPlanComptable = asyncHandler(async (req, res, next) => {
-  const comptes = await CompteComptable.find({}).sort({ numero: 1 });
-  res.status(200).json({
-    status: 'success',
-    results: comptes.length,
-    data: { comptes },
-  });
+  const features = new APIFeatures(CompteComptable.find(), req.query).sort();
+  const comptes = await features.query;
+  res.status(200).json({ status: 'success', results: comptes.length, data: { comptes } });
 });
 
-
-/**
- * @desc    Créer un nouveau compte comptable
- * @route   POST /api/v1/comptabilite/plan-comptable
- * @access  Privé (permission: 'manage:comptabilite')
- */
 exports.createCompteComptable = asyncHandler(async (req, res, next) => {
   const nouveauCompte = await CompteComptable.create(req.body);
-  res.status(201).json({
-    status: 'success',
-    data: { compte: nouveauCompte },
-  });
+  res.status(201).json({ status: 'success', data: { compte: nouveauCompte } });
 });
 
+exports.updateCompteComptable = asyncHandler(async (req, res, next) => {
+    const compte = await CompteComptable.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if(!compte) return next(new AppError('Aucun compte trouvé avec cet ID.', 404));
+    res.status(200).json({ status: 'success', data: { compte } });
+});
 
-// ===============================================
-// --- Section: Consultations (Grand Livre) ---
-// ===============================================
-
-/**
- * @desc    Consulter le Grand Livre pour un compte sur une période
- * @route   GET /api/v1/comptabilite/grand-livre/:compteId?dateDebut=...&dateFin=...
- * @access  Privé (permission: 'read:comptabilite')
- */
+// --- Consultations ---
 exports.getGrandLivreCompte = asyncHandler(async (req, res, next) => {
     const { compteId } = req.params;
     const { dateDebut, dateFin } = req.query;
-
     if (!dateDebut || !dateFin) {
         return next(new AppError('Veuillez fournir une période (dateDebut et dateFin).', 400));
     }
     
-    // On cherche toutes les écritures validées de la période qui contiennent une ligne pour ce compte
-    const ecritures = await EcritureComptable.find({
-        statut: 'Validée',
-        date: { $gte: new Date(dateDebut), $lte: new Date(dateFin) },
-        'lignes.compte': compteId
-    }).populate('journal', 'code').sort({ date: 1 });
-    
-    // On ne garde que les lignes qui concernent le compte demandé
-    const lignesGrandLivre = ecritures.flatMap(e =>
-        e.lignes
-            .filter(l => l.compte.toString() === compteId)
-            .map(l => ({
-                date: e.date,
-                journal: e.journal.code,
-                numeroPiece: e.numeroPiece,
-                libelle: l.libelle,
-                debit: l.debit,
-                credit: l.credit,
-            }))
-    );
-    
-    // TODO: Calculer le solde de départ pour avoir un solde progressif
+    const compte = await CompteComptable.findById(compteId).lean();
+    if (!compte) return next(new AppError('Compte comptable non trouvé.', 404));
+
+    const grandLivreData = await grandLivreService.getGrandLivrePourCompte(compteId, dateDebut, dateFin);
     
     res.status(200).json({
         status: 'success',
         data: {
-            lignes: lignesGrandLivre,
+            compte,
+            periode: { dateDebut, dateFin },
+            ...grandLivreData
         }
     });
 });

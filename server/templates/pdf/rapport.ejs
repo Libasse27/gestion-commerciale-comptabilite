@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title><%= titre %></title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #333; }
+        .report-wrapper { width: 210mm; margin: auto; }
+        .report-box { max-width: 800px; margin: auto; padding: 20px; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+        .header h1 { margin: 0; font-size: 20px; }
+        .header p { margin: 5px 0 0; font-size: 12px; color: #555; }
+        .report-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .report-table th, .report-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .report-table thead th { background-color: #f2f2f2; font-weight: bold; }
+        .report-table tfoot td { background-color: #f8f8f8; font-weight: bold; }
+        .report-table .align-right { text-align: right; }
+        .report-table .align-center { text-align: center; }
+        .summary-section { margin-top: 20px; padding: 15px; background-color: #f9f9f9; border: 1px solid #eee; border-radius: 5px; }
+        .summary-section h3 { margin-top: 0; }
+        .footer { text-align: center; font-size: 10px; color: #888; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="report-wrapper">
+        <div class="report-box">
+            <!-- En-tête du Rapport -->
+            <div class="header">
+                <h1><%= entreprise.nom || 'Mon Entreprise' %></h1>
+                <h2><%= titre %></h2>
+                <p>Période du <%= formatDate(periode.dateDebut) %> au <%= formatDate(periode.dateFin) %></p>
+                <p>Généré le <%= formatDate(new Date()) %></p>
+            </div>
+
+            <!-- Section Résumé / KPIs (Optionnelle) -->
+            <% if (resume) { %>
+                <div class="summary-section">
+                    <h3>Résumé</h3>
+                    <ul>
+                        <% Object.entries(resume).forEach(([key, value]) => { %>
+                            <li><strong><%= key %>:</strong> <%= value %></li>
+                        <% }); %>
+                    </ul>
+                </div>
+            <% } %>
+            
+            <!-- Tableau Principal des Données -->
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <% colonnes.forEach(col => { %>
+                            <th><%= col.header %></th>
+                        <% }); %>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (donnees.length > 0) { %>
+                        <% donnees.forEach(ligne => { %>
+                            <tr>
+                                <% colonnes.forEach(col => { %>
+                                    <td class="<%= col.align || '' %>">
+                                        <%# Utilise un helper de formatage si spécifié, sinon affiche la valeur brute %>
+                                        <% const rawValue = ligne[col.accessor]; %>
+                                        <% if (col.formatter === 'currency') { %>
+                                            <%= formatCurrency(rawValue) %>
+                                        <% } else if (col.formatter === 'date') { %>
+                                            <%= formatDate(rawValue) %>
+                                        <% } else { %>
+                                            <%= rawValue %>
+                                        <% } %>
+                                    </td>
+                                <% }); %>
+                            </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="<%= colonnes.length %>" class="align-center">Aucune donnée à afficher pour cette période.</td>
+                        </tr>
+                    <% } %>
+                </tbody>
+                <!-- Pied de tableau avec les totaux (Optionnel) -->
+                <% if (totaux) { %>
+                    <tfoot>
+                        <tr>
+                            <% colonnes.forEach((col, index) => { %>
+                                <% if (index === 0) { %>
+                                    <td><strong>Totaux</strong></td>
+                                <% } else if (totaux[col.accessor]) { %>
+                                    <td class="<%= col.align || '' %>">
+                                        <strong>
+                                            <% if (col.formatter === 'currency') { %>
+                                                <%= formatCurrency(totaux[col.accessor]) %>
+                                            <% } else { %>
+                                                <%= totaux[col.accessor] %>
+                                            <% } %>
+                                        </strong>
+                                    </td>
+                                <% } else { %>
+                                    <td></td>
+                                <% } %>
+                            <% }); %>
+                        </tr>
+                    </tfoot>
+                <% } %>
+            </table>
+
+            <!-- Pied de page -->
+            <div class="footer">
+                Rapport généré par <%= appName || 'ERP Sénégal' %>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

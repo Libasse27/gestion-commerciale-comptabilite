@@ -1,31 +1,9 @@
-// ==============================================================================
-//           Composant de Téléversement de Fichier (FileUpload)
-//
-// Ce composant fournit une interface utilisateur stylée et interactive pour
-// la sélection de fichiers.
-//
-// Il masque l'input `<input type="file">` par défaut, qui est difficile à
-// styler, et le remplace par un champ Bootstrap plus esthétique.
-//
-// Il gère l'affichage du nom du fichier sélectionné et permet de le retirer.
-// ==============================================================================
-
+// client/src/components/forms/FileUpload.jsx
 import React, { useRef } from 'react';
 import { Form, Button, InputGroup } from 'react-bootstrap';
-import { FileEarmarkArrowUpFill, XCircleFill } from 'react-bootstrap-icons';
+import { FileEarmarkArrowUp, XCircle } from 'react-bootstrap-icons';
+import PropTypes from 'prop-types';
 
-/**
- * Un champ de formulaire pour téléverser un fichier.
- *
- * @param {object} props - Les propriétés du composant.
- * @param {string} props.name - Le nom du champ.
- * @param {File | null} props.selectedFile - Le fichier actuellement sélectionné (un objet File).
- * @param {function(File | null): void} props.onFileSelect - La fonction de callback appelée avec l'objet File sélectionné ou null.
- * @param {string} [props.placeholder='Choisissez un fichier...'] - Le texte affiché quand aucun fichier n'est sélectionné.
- * @param {string} [props.accept] - Les types de fichiers acceptés (ex: "image/*", ".pdf").
- * @param {boolean} [props.isInvalid=false] - Pour le style de validation.
- * @param {boolean} [props.disabled=false] - Pour désactiver le champ.
- */
 const FileUpload = ({
   name,
   selectedFile,
@@ -35,29 +13,24 @@ const FileUpload = ({
   isInvalid = false,
   disabled = false,
 }) => {
-  // useRef est utilisé pour déclencher le clic sur l'input caché
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     onFileSelect(file || null);
   };
 
-  const handleButtonClick = () => {
-    fileInputRef.current.click();
-  };
+  const handleButtonClick = () => fileInputRef.current?.click();
 
   const handleRemoveFile = () => {
     onFileSelect(null);
-    // Réinitialiser la valeur de l'input pour pouvoir re-sélectionner le même fichier
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
   return (
-    <div>
-      {/* L'input de type "file" est caché mais fonctionnel */}
+    <>
       <input
         type="file"
         name={name}
@@ -68,41 +41,38 @@ const FileUpload = ({
         disabled={disabled}
       />
       
-      {/* L'interface visible par l'utilisateur */}
-      <InputGroup>
-        <Button
-          variant="outline-secondary"
-          onClick={handleButtonClick}
-          disabled={disabled}
-        >
-          <FileEarmarkArrowUpFill className="me-2" />
-          Parcourir...
+      <InputGroup hasValidation>
+        <Button variant="outline-secondary" onClick={handleButtonClick} disabled={disabled}>
+          <FileEarmarkArrowUp className="me-2" />
+          Choisir un fichier
         </Button>
         <Form.Control
-          value={selectedFile ? selectedFile.name : placeholder}
+          value={selectedFile ? selectedFile.name : ''}
           placeholder={placeholder}
           readOnly
           isInvalid={isInvalid}
           disabled={disabled}
-          style={{ 
-            backgroundColor: disabled ? '#e9ecef' : '#fff', 
-            cursor: selectedFile ? 'default' : 'pointer'
-          }}
-          onClick={!selectedFile ? handleButtonClick : undefined}
+          style={{ backgroundColor: '#fff' }} // Forcer le fond blanc même en disabled
         />
         {selectedFile && (
-          <Button
-            variant="outline-danger"
-            onClick={handleRemoveFile}
-            disabled={disabled}
-            title="Retirer le fichier"
-          >
-            <XCircleFill />
+          <Button variant="outline-secondary" onClick={handleRemoveFile} disabled={disabled}>
+            <XCircle />
           </Button>
         )}
+        {/* L'erreur sera affichée par le composant FormField parent */}
       </InputGroup>
-    </div>
+    </>
   );
+};
+
+FileUpload.propTypes = {
+  name: PropTypes.string,
+  selectedFile: PropTypes.object,
+  onFileSelect: PropTypes.func.isRequired,
+  placeholder: PropTypes.string,
+  accept: PropTypes.string,
+  isInvalid: PropTypes.bool,
+  disabled: PropTypes.bool,
 };
 
 export default FileUpload;

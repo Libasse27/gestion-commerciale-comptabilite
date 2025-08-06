@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Facture N° <%= facture.numero %></title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #333; }
+        .invoice-wrapper { width: 210mm; height: 297mm; margin: auto; }
+        .invoice-box { max-width: 800px; margin: auto; padding: 30px; }
+        .header, .footer { text-align: center; }
+        .header h1 { color: #000; margin-bottom: 5px; font-size: 24px; }
+        .company-details p, .invoice-details p, .client-details p { margin: 0; line-height: 1.6; }
+        .flex-container { display: flex; justify-content: space-between; margin-top: 40px; }
+        .invoice-table { width: 100%; line-height: inherit; text-align: left; border-collapse: collapse; margin-top: 30px; }
+        .invoice-table td, .invoice-table th { padding: 8px; vertical-align: top; }
+        .invoice-table thead th { background-color: #f2f2f2; border-bottom: 2px solid #ddd; text-align: left; }
+        .invoice-table tbody tr { border-bottom: 1px solid #eee; }
+        .invoice-table .align-right { text-align: right; }
+        .totals-table { width: 50%; margin-left: auto; margin-top: 20px; }
+        .totals-table td { padding: 8px; }
+        .totals-table .label { font-weight: bold; }
+        .totals-table .total-amount { font-size: 1.2em; font-weight: bold; border-top: 2px solid #333; }
+        .notes, .footer { margin-top: 40px; font-size: 11px; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="invoice-wrapper">
+        <div class="invoice-box">
+            <!-- En-tête : Informations de l'entreprise et de la facture -->
+            <table cellpadding="0" cellspacing="0" style="width: 100%;">
+                <tr class="top">
+                    <td colspan="2">
+                        <table style="width: 100%;">
+                            <tr>
+                                <td class="title" style="vertical-align: top;">
+                                    <% if (entreprise.logo_url) { %>
+                                        <img src="<%= entreprise.logo_url %>" alt="Logo" style="max-width: 150px; max-height: 80px;" />
+                                    <% } else { %>
+                                        <h2 style="margin:0;"><%= entreprise.nom %></h2>
+                                    <% } %>
+                                </td>
+                                <td class="invoice-details" style="text-align: right;">
+                                    <h1 style="margin:0;">FACTURE</h1>
+                                    <p><strong>N° :</strong> <%= facture.numero %></p>
+                                    <p><strong>Date :</strong> <%= formatDate(facture.dateEmission) %></p>
+                                    <p><strong>Échéance :</strong> <%= formatDate(facture.dateEcheance) %></p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Informations de l'émetteur et du client -->
+            <div class="flex-container">
+                <div class="company-details">
+                    <p><strong><%= entreprise.nom %></strong></p>
+                    <p><%- entreprise.adresse.replace(/\n/g, '<br>') %></p>
+                    <p>Tél : <%= entreprise.telephone %></p>
+                    <p>Email : <%= entreprise.email %></p>
+                    <p>NINEA : <%= entreprise.ninea %></p>
+                    <p>RC : <%= entreprise.rccm %></p>
+                </div>
+                <div class="client-details" style="text-align: right;">
+                    <p><strong>Facturé à :</strong></p>
+                    <p><strong><%= client.nom %></strong></p>
+                    <p><%- client.adresse ? client.adresse.replace(/\n/g, '<br>') : '' %></p>
+                    <p><%= client.telephone %></p>
+                    <p><%= client.email %></p>
+                </div>
+            </div>
+
+            <!-- Tableau des lignes de la facture -->
+            <table class="invoice-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th class="align-right">Qté</th>
+                        <th class="align-right">Prix U. HT</th>
+                        <th class="align-right">Montant HT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% lignes.forEach(ligne => { %>
+                    <tr>
+                        <td><%= ligne.description %></td>
+                        <td class="align-right"><%= ligne.quantite %></td>
+                        <td class="align-right"><%= formatCurrency(ligne.prixUnitaireHT) %></td>
+                        <td class="align-right"><%= formatCurrency(ligne.totalHT) %></td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+
+            <!-- Tableau des totaux -->
+            <table class="totals-table">
+                <tr>
+                    <td class="label">Total HT</td>
+                    <td class="align-right"><%= formatCurrency(facture.totalHT) %></td>
+                </tr>
+                <tr>
+                    <td class="label">TVA (<%= lignes[0] ? lignes[0].tauxTVA : 18 %>%)</td>
+                    <td class="align-right"><%= formatCurrency(facture.totalTVA) %></td>
+                </tr>
+                <tr class="total-row">
+                    <td class="label total-amount">Total TTC</td>
+                    <td class="align-right total-amount"><%= formatCurrency(facture.totalTTC) %></td>
+                </tr>
+                 <tr>
+                    <td class="label">Montant Payé</td>
+                    <td class="align-right"><%= formatCurrency(facture.montantPaye) %></td>
+                </tr>
+                <tr>
+                    <td class="label">Solde Dû</td>
+                    <td class="align-right"><%= formatCurrency(facture.soldeDu) %></td>
+                </tr>
+            </table>
+
+            <!-- Notes et Pied de page -->
+            <div class="notes">
+                <p><strong>Conditions de paiement :</strong> Paiement à <%= client.termesPaiement || 30 %> jours.</p>
+                <% if (facture.notes) { %>
+                    <p><strong>Notes :</strong><br><%= facture.notes %></p>
+                <% } %>
+            </div>
+            
+            <div class="footer">
+                <p><%= entreprise.pied_de_page_facture || 'Merci de votre confiance.' %></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

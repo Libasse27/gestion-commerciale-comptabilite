@@ -1,56 +1,43 @@
-// ==============================================================================
-//           Contrôleur pour la Consultation des Mouvements de Stock
-//
-// Ce contrôleur gère les requêtes HTTP pour la lecture de l'historique des
-// mouvements de stock. Il ne modifie aucune donnée.
-//
-// Il délègue toute la logique de récupération et de filtrage des données
-// au `mouvementService`.
-// ==============================================================================
-
+// server/controllers/stock/mouvementController.js
 const mouvementService = require('../../services/stock/mouvementService');
 const asyncHandler = require('../../utils/asyncHandler');
+const AppError = require('../../utils/appError');
+const { startOfMonth, endOfMonth } = require('date-fns');
 
 /**
  * @desc    Récupérer l'historique paginé des mouvements d'un produit
  * @route   GET /api/v1/stock/mouvements/produit/:produitId
- * @access  Privé (permission: 'read:stock')
  */
 exports.getHistoriqueProduit = asyncHandler(async (req, res, next) => {
   const { produitId } = req.params;
-  
-  // Récupérer les options de pagination et de filtrage depuis les query parameters
   const options = {
-    page: parseInt(req.query.page) || 1,
-    limit: parseInt(req.query.limit) || 25,
-    depotId: req.query.depotId, // Optionnel, pour filtrer par dépôt
+    page: req.query.page,
+    limit: req.query.limit,
+    depotId: req.query.depotId,
   };
   
   const resultat = await mouvementService.getHistoriqueProduit(produitId, options);
 
   res.status(200).json({
     status: 'success',
-    data: resultat,
+    ...resultat, // Fusionner les métadonnées de pagination directement
   });
 });
 
 /**
  * @desc    Récupérer un rapport agrégé des mouvements sur une période
  * @route   GET /api/v1/stock/mouvements/rapport
- * @access  Privé (permission: 'read:stock' ou 'read:rapport')
  */
 exports.getRapportMouvements = asyncHandler(async (req, res, next) => {
-    // Récupérer les dates depuis les query parameters (ex: ?dateDebut=2024-01-01&dateFin=2024-01-31)
     const { dateDebut, dateFin } = req.query;
 
-    if (!dateDebut || !dateFin) {
-        // Pour un rapport, les dates sont généralement requises
-        // return next(new AppError('Veuillez fournir une date de début et une date de fin.', 400));
+    // Si pas de dates, prendre le mois en cours par défaut
+    const startDate = dateDebut ? new Date(dateDebut) : startOfMonth(new Date());
+    const endDate = dateFin ? new Date(dateFin) : endOfMonth(new Date());
+
+    if (startDate > endDate) {
+        return next(new AppError('La date de début ne peut être postérieure à la date de fin.', 400));
     }
-    
-    // Utiliser les dates fournies ou des valeurs par défaut (ex: le mois en cours)
-    const startDate = dateDebut ? new Date(dateDebut) : new Date(new Date().setDate(1));
-    const endDate = dateFin ? new Date(dateFin) : new Date();
 
     const rapport = await mouvementService.getRapportMouvements(startDate, endDate);
 

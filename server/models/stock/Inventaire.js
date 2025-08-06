@@ -1,88 +1,27 @@
-// ==============================================================================
-//           Modèle Mongoose pour les Inventaires de Stock
-//
-// Ce modèle enregistre les opérations d'inventaire physique des stocks.
-// Un inventaire consiste à compter les produits dans un dépôt pour comparer
-// le stock physique au stock théorique (informatique).
-//
-// Les écarts constatés lors d'un inventaire validé déclenchent des
-// mouvements de stock d'ajustement.
-// ==============================================================================
-
+// server/models/stock/Inventaire.js
 const mongoose = require('mongoose');
+const numerotationService = require('../../services/system/numerotationService');
+const { roundTo } = require('../../utils/numberUtils');
 
-/**
- * Sous-schéma pour les lignes d'un inventaire.
- */
 const ligneInventaireSchema = new mongoose.Schema({
-  produit: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Produit',
-    required: true,
-  },
-  quantiteTheorique: { // Le stock enregistré dans le système au moment de l'inventaire
-    type: Number,
-    required: true,
-  },
-  quantitePhysique: { // Le stock réellement compté
-    type: Number,
-    required: true,
-    min: 0,
-  },
-  ecart: { // La différence (Physique - Théorique)
-    type: Number,
-    required: true,
-  },
+  produit: { type: mongoose.Schema.Types.ObjectId, ref: 'Produit', required: true },
+  quantiteTheorique: { type: Number, required: true, min: 0 },
+  quantitePhysique: { type: Number, required: true, min: 0 },
+  ecart: { type: Number, required: true, default: 0 },
 }, { _id: false });
 
 
-/**
- * Schéma principal pour l'Inventaire.
- */
 const inventaireSchema = new mongoose.Schema(
   {
-    numero: {
-      type: String,
-      required: true,
-      unique: true,
-      // TODO: Ajouter un hook pour la numérotation automatique (ex: INV-2024-0001)
-    },
-    depot: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Depot',
-      required: true,
-    },
-    dateInventaire: {
-      type: Date,
-      default: Date.now,
-    },
-    
+    numero: { type: String, unique: true, trim: true, uppercase: true },
+    depot: { type: mongoose.Schema.Types.ObjectId, ref: 'Depot', required: true },
+    dateInventaire: { type: Date, default: Date.now },
     lignes: [ligneInventaireSchema],
-    
-    statut: {
-      type: String,
-      enum: ['En cours', 'Validé', 'Annulé'],
-      default: 'En cours',
-    },
-    
-    notes: {
-        type: String,
-        trim: true,
-    },
-    
-    realisePar: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
-    validePar: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null,
-    },
-    dateValidation: {
-      type: Date,
-    }
+    statut: { type: String, enum: ['En cours', 'Validé', 'Annulé'], default: 'En cours' },
+    notes: { type: String, trim: true },
+    realisePar: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    validePar: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    dateValidation: { type: Date },
   },
   {
     timestamps: true,
@@ -90,12 +29,30 @@ const inventaireSchema = new mongoose.Schema(
   }
 );
 
-// Hook pre-save pour calculer l'écart automatiquement
-ligneInventaireSchema.pre('validate', function(next) {
-    this.ecart = this.quantitePhysique - this.quantiteTheorique;
+// Hook pour calculer l'écart avant toute opération de sauvegarde/validation
+inventaireSchema.pre('validate', function(next) {
+    if (this.isModified('lignes') || this.isNew) {
+        this.lignes.forEach(ligne => {
+            ligne.ecart = roundTo(ligne.quantitePhysique - ligne.quantiteTheorique);
+        });
+    }
     next();
 });
 
-const Inventaire = mongoose.model('Inventaire', inventaireSchema);
+// Hook pour la numérotation automatique
+inventaireSchema.pre('save', async function(next) {
+  if (this.isNew && !this.numero) {
+    try {
+      this.numero = await numerotationService.getNextNumero('inventaire');
+    } catch (error) {
+      return next(error);
+    }
+  }
+  next();
+});
+
+inventaireSchema.index({ depot: 1, dateInventaire: -1 });
+
+const Inventaire = mongoose.models.Inventaire || mongoose.model('Inventaire', inventaireSchema);
 
 module.exports = Inventaire;

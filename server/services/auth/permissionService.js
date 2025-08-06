@@ -1,132 +1,135 @@
+// server/services/auth/permissionService.js
 // ==============================================================================
 //                Service de Gestion des Rôles et Permissions (RBAC)
 //
 // Ce service gère la logique métier du Contrôle d'Accès Basé sur les Rôles.
-// Il est responsable de :
-//   - La création/gestion des permissions granulaires.
-//   - La création/gestion des rôles.
-//   - L'assignation de permissions à des rôles.
-//   - La vérification des droits d'un utilisateur pour une action donnée.
-//   - La mise en cache intensive des permissions pour des performances optimales.
+// Il est responsable du cycle de vie complet des permissions et des rôles,
+// et de la vérification des droits des utilisateurs.
 // ==============================================================================
 
 const Role = require('../../models/auth/Role');
 const Permission = require('../../models/auth/Permission');
 const User = require('../../models/auth/User');
-const redisClient = require('../../config/redis'); // Pour la mise en cache
+const { redisClient } = require('../../config/redis'); // Importer le client
 const { CACHE_TTL } = require('../../utils/constants');
 const { logger } = require('../../middleware/logger');
+const AppError = require('../../utils/appError');
 
 /**
- * Crée une nouvelle permission si elle n'existe pas déjà.
- * @param {string} name - Le nom de la permission (ex: 'produit:create').
- * @param {string} description - Une description de ce que la permission autorise.
- * @param {string} group - Le groupe auquel la permission appartient (ex: 'Produits').
- * @returns {Promise<import('mongoose').Document>} La permission créée ou existante.
+ * Crée ou met à jour une permission.
+ * @param {{name: string, description: string, group: string}} permissionData
  */
-async function createPermission(name, description, group) {
-  const existingPermission = await Permission.findOne({ name });
-  if (existingPermission) {
-    return existingPermission;
-  }
-  const newPermission = new Permission({ name, description, group });
-  await newPermission.save();
-  return newPermission;
+async function createPermission({ name, description, group }) {
+  return Permission.findOneAndUpdate({ name }, { name, description, group }, { upsert: true, new: true, runValidators: true });
 }
 
 /**
  * Crée un nouveau rôle.
- * @param {string} name - Le nom du rôle (doit être dans USER_ROLES).
- * @param {string} description - La description du rôle.
- * @param {string[]} permissionNames - Un tableau des noms des permissions à associer.
- * @returns {Promise<import('mongoose').Document>} Le rôle créé.
- * @throws {Error} Si le rôle existe déjà ou si une permission n'est pas trouvée.
+ * @param {{name: string, description: string, permissionNames: string[]}} roleData
  */
-async function createRole(name, description, permissionNames = []) {
-  const existingRole = await Role.findOne({ name });
-  if (existingRole) {
-    throw new Error('Ce rôle existe déjà.');
+async function createRole({ name, description, permissionNames = [] }) {
+  if (await Role.findOne({ name })) {
+    throw new AppError('Un rôle avec ce nom existe déjà.', 409);
   }
 
-  const permissions = await Permission.find({ name: { $in: permissionNames } });
+  const permissions = await Permission.find({ name: { $in: permissionNames } }).select('_id');
   if (permissions.length !== permissionNames.length) {
-    throw new Error("Une ou plusieurs permissions spécifiées n'ont pas été trouvées.");
+    throw new AppError("Une ou plusieurs permissions spécifiées n'ont pas été trouvées.", 400);
   }
 
-  const newRole = new Role({
-    name,
-    description,
-    permissions: permissions.map(p => p._id),
+  const newRole = await Role.create({
+    name, description, permissions: permissions.map(p => p._id),
   });
-
-  await newRole.save();
-  await invalidateRolePermissionsCache(newRole._id); // Invalider le cache immédiatement
   return newRole;
 }
 
 /**
- * Récupère les permissions d'un rôle, en utilisant un cache Redis pour les performances.
- * @param {import('mongoose').Types.ObjectId} roleId - L'ID du rôle.
- * @returns {Promise<Set<string>>} Un Set contenant les noms des permissions pour ce rôle.
+ * Met à jour les permissions d'un rôle.
+ * @param {string} roleId
+ * @param {{description: string, permissionNames: string[]}} updateData
+ */
+async function updateRolePermissions(roleId, { description, permissionNames = [] }) {
+  const role = await Role.findById(roleId);
+  if (!role) throw new AppError('Rôle non trouvé.', 404);
+
+  const permissions = await Permission.find({ name: { $in: permissionNames } }).select('_id');
+  if (permissions.length !== permissionNames.length) {
+    throw new AppError("Une ou plusieurs permissions spécifiées n'ont pas été trouvées.", 400);
+  }
+
+  role.description = description ?? role.description;
+  role.permissions = permissions.map(p => p._id);
+  
+  await role.save();
+  await invalidateRolePermissionsCache(roleId);
+  return role;
+}
+
+/**
+ * Supprime un rôle.
+ * @param {string} roleId
+ */
+async function deleteRole(roleId) {
+    const userCount = await User.countDocuments({ role: roleId });
+    if (userCount > 0) {
+        throw new AppError(`Impossible de supprimer ce rôle car il est assigné à ${userCount} utilisateur(s).`, 400);
+    }
+    const role = await Role.findByIdAndDelete(roleId);
+    if (!role) throw new AppError('Rôle non trouvé.', 404);
+    
+    await invalidateRolePermissionsCache(roleId);
+    return role;
+}
+
+/**
+ * Récupère les permissions d'un rôle, en utilisant un cache Redis.
+ * @param {string} roleId
  */
 async function getRolePermissions(roleId) {
   if (!roleId) return new Set();
   const cacheKey = `permissions:role:${roleId}`;
-
+  
   try {
-    // 1. Essayer de récupérer depuis le cache
     if (redisClient.isOpen) {
-        const cachedPermissions = await redisClient.get(cacheKey);
-        if (cachedPermissions) {
-          return new Set(JSON.parse(cachedPermissions));
-        }
+        const cached = await redisClient.get(cacheKey);
+        if (cached) return new Set(JSON.parse(cached));
     }
+  } catch(e) { logger.error('Erreur de lecture du cache Redis pour les permissions.', { error: e.message }); }
 
-    // 2. Si cache miss, récupérer depuis la DB
-    const role = await Role.findById(roleId).populate('permissions', 'name');
-    if (!role) {
-      return new Set(); // Retourne un Set vide si le rôle n'existe pas
-    }
+  const role = await Role.findById(roleId).populate('permissions', 'name').lean();
+  if (!role || !role.permissions) return new Set();
 
-    const permissionsSet = new Set(role.permissions.map(p => p.name));
-
-    // 3. Mettre en cache pour les futures requêtes
+  const permissionsSet = new Set(role.permissions.map(p => p.name));
+  
+  try {
     if (redisClient.isOpen) {
-        await redisClient.set(cacheKey, JSON.stringify([...permissionsSet]), {
-          EX: CACHE_TTL.LONG, // Expire après 1 heure
-        });
+        await redisClient.set(cacheKey, JSON.stringify([...permissionsSet]), { EX: CACHE_TTL.LONG });
     }
+  } catch(e) { logger.error('Erreur d\'écriture du cache Redis pour les permissions.', { error: e.message }); }
 
-    return permissionsSet;
-  } catch (error) {
-      logger.error('Erreur lors de la récupération des permissions du rôle.', { roleId, error: error.message });
-      return new Set(); // Retourne un Set vide en cas d'erreur
-  }
+  return permissionsSet;
 }
 
 /**
  * Invalide (supprime) le cache des permissions pour un rôle donné.
- * À appeler chaque fois que les permissions d'un rôle sont modifiées.
- * @param {import('mongoose').Types.ObjectId} roleId - L'ID du rôle dont le cache doit être invalidé.
+ * @param {string} roleId
  */
 async function invalidateRolePermissionsCache(roleId) {
-  if (redisClient.isOpen) {
-    const cacheKey = `permissions:role:${roleId}`;
-    await redisClient.del(cacheKey);
-  }
+    if (!roleId) return;
+    if (redisClient.isOpen) {
+        const cacheKey = `permissions:role:${roleId}`;
+        await redisClient.del(cacheKey);
+    }
 }
 
 /**
  * Vérifie si un utilisateur a une permission spécifique.
- * @param {import('mongoose').Types.ObjectId} userId - L'ID de l'utilisateur.
- * @param {string} requiredPermission - Le nom de la permission requise.
- * @returns {Promise<boolean>} `true` si l'utilisateur a la permission, sinon `false`.
+ * @param {string} userId
+ * @param {string} requiredPermission
  */
 async function userHasPermission(userId, requiredPermission) {
-  const user = await User.findById(userId).select('role').lean(); // .lean() pour la performance
-  if (!user || !user.role) {
-    return false;
-  }
+  const user = await User.findById(userId).select('role').lean();
+  if (!user || !user.role) return false;
 
   const userPermissions = await getRolePermissions(user.role);
   return userPermissions.has(requiredPermission);
@@ -136,6 +139,8 @@ async function userHasPermission(userId, requiredPermission) {
 module.exports = {
   createPermission,
   createRole,
+  updateRolePermissions,
+  deleteRole,
   getRolePermissions,
   invalidateRolePermissionsCache,
   userHasPermission,

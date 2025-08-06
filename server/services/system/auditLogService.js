@@ -1,45 +1,83 @@
-// ==============================================================================
-//           Service pour la Gestion du Journal d'Audit
-//
-// Ce service fournit une interface simple pour enregistrer des événements
-// d'audit dans la base de données.
-//
-// Il est conçu pour être "fire-and-forget" : un échec lors de l'écriture
-// d'un log ne doit pas interrompre le flux principal de l'application.
-// L'échec est simplement enregistré dans les logs du serveur.
-// ==============================================================================
-
+// server/services/system/auditLogService.js
 const AuditLog = require('../../models/system/AuditLog');
 const { logger } = require('../../middleware/logger');
+const { AUDIT_LOG_ACTIONS } = require('../../utils/constants');
 
 /**
- * Crée une nouvelle entrée dans le journal d'audit de manière asynchrone.
- *
- * @param {object} logData - Les données à enregistrer dans le journal.
- * @param {import('mongoose').Types.ObjectId | null} logData.user - L'ID de l'utilisateur qui effectue l'action.
- * @param {string} logData.action - Le type d'action (ex: 'CREATE', 'LOGIN_SUCCESS').
- * @param {string} logData.entity - Le type de ressource affectée (ex: 'Client', 'Facture').
- * @param {import('mongoose').Types.ObjectId} [logData.entityId] - L'ID de la ressource affectée.
- * @param {'SUCCESS' | 'FAILURE'} logData.status - Le résultat de l'action.
- * @param {string} [logData.ipAddress] - L'adresse IP de la requête.
- * @param {object | string} [logData.details] - Des détails supplémentaires (ex: données avant/après, message d'erreur).
+ * Crée une entrée de log. Conçu pour être "fire-and-forget".
+ * @private
  */
-function logAction(logData) {
-  // On ne met pas `await` ici. On lance la création du log et on continue
-  // immédiatement le flux de l'application sans attendre le résultat.
-  AuditLog.create(logData)
-    .catch(err => {
-      // Si la création du log échoue, on ne veut surtout pas que l'application
-      // plante. On se contente d'enregistrer cette erreur de logging dans
-      // les logs du serveur. C'est une erreur de l'infrastructure, pas de la requête.
-      logger.error("Échec critique de l'écriture dans le journal d'audit", {
-        errorMessage: err.message,
-        logDataAttempted: logData, // On logue les données qu'on a tenté d'écrire
-      });
+function _log(logData) {
+  AuditLog.create(logData).catch(err => {
+    logger.error("Échec de l'écriture dans le journal d'audit", {
+      errorMessage: err.message,
+      logDataAttempted: logData,
     });
+  });
 }
 
+/**
+ * Journalise une action de création (CREATE).
+ */
+function logCreate({ user, entity, entityId, ipAddress }) {
+  _log({
+    user, action: AUDIT_LOG_ACTIONS.CREATE, entity, entityId,
+    status: 'SUCCESS', ipAddress,
+    details: `${entity} (ID: ${entityId}) a été créé(e).`
+  });
+}
+
+/**
+ * Journalise une action de mise à jour (UPDATE) en comparant les états.
+ */
+function logUpdate({ user, entity, entityId, ipAddress }, before, after) {
+  const allKeys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  const changes = {};
+
+  for (const key of allKeys) {
+    // Ignorer les champs techniques ou non pertinents
+    if (['password', '_id', 'updatedAt', '__v', 'passwordChangedAt'].includes(key)) continue;
+    
+    // Convertir en chaîne pour une comparaison fiable
+    const beforeValue = String(before[key] ?? '');
+    const afterValue = String(after[key] ?? '');
+
+    if (beforeValue !== afterValue) {
+      changes[key] = { from: before[key], to: after[key] };
+    }
+  }
+
+  if (Object.keys(changes).length === 0) return; // Ne pas logger si aucun changement pertinent
+
+  _log({
+    user, action: AUDIT_LOG_ACTIONS.UPDATE, entity, entityId,
+    status: 'SUCCESS', ipAddress, details: { changes },
+  });
+}
+
+/**
+ * Journalise une action de suppression (DELETE).
+ */
+function logDelete({ user, entity, entityId, ipAddress }) {
+  _log({
+    user, action: AUDIT_LOG_ACTIONS.DELETE, entity, entityId,
+    status: 'SUCCESS', ipAddress,
+    details: `${entity} (ID: ${entityId}) a été supprimé(e).`
+  });
+}
+
+/**
+ * Journalise un événement système (ex: connexion, échec, export).
+ */
+function logSystemEvent({ action, status, ipAddress, user = null, entity = 'System', entityId = null, details }) {
+  _log({
+    user, action, entity, entityId, status, ipAddress, details,
+  });
+}
 
 module.exports = {
-  logAction,
+  logCreate,
+  logUpdate,
+  logDelete,
+  logSystemEvent,
 };

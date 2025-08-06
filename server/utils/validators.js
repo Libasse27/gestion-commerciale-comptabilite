@@ -28,7 +28,7 @@ const isMongoId = (id) => {
  * @returns {boolean} `true` si le mot de passe est fort, sinon `false`.
  */
 const isStrongPassword = (password) => {
-  if (!password) return false;
+  if (typeof password !== 'string') return false;
   // Regex: au moins 8 caractères, 1 minuscule, 1 majuscule, 1 chiffre, 1 caractère spécial
   const strongPasswordRegex = new RegExp(
     '^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})'
@@ -60,7 +60,7 @@ const isValidSenegalPhone = (phone) => {
  * @returns {boolean} `true` si le format est valide, sinon `false`.
  */
 const isValidNINEA = (ninea) => {
-  if (!ninea) return false;
+  if (typeof ninea !== 'string') return false;
   // Le format standard du NINEA est généralement composé de 9 chiffres.
   const nineaRegex = /^[0-9]{9}$/;
   return nineaRegex.test(ninea);

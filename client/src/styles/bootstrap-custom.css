@@ -1,53 +1,35 @@
+/* client/src/utils/bootstrap-custom.css */
 /* ==============================================================================
              Personnalisation des Variables CSS de Bootstrap 5
-   
-   Ce fichier redéfinit les variables CSS globales de Bootstrap pour adapter
-   le thème visuel de l'application (couleurs, polices, etc.) sans avoir
-   à surcharger les classes CSS une par une.
-   
-   C'est la méthode la plus propre et la plus maintenable pour customiser
-   Bootstrap 5.
-   
-   Documentation : https://getbootstrap.com/docs/5.3/customize/css-variables/
 ============================================================================== */
-
-/* --- Importation d'une police personnalisée (optionnel) --- */
-/* Décommentez pour utiliser une police Google Fonts, par exemple. */
-/* @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'); */
-
 
 /* --- :root [Thème Clair par défaut] --- */
 :root {
   /* -- Couleurs Primaires -- */
-  /* Changez cette couleur pour la couleur principale de votre marque/ERP */
-  --bs-primary: #1e40af; /* Un bleu plus profond et professionnel */
+  --bs-primary: #1e40af;
   --bs-primary-rgb: 30, 64, 175;
-
-  --bs-secondary: #64748b; /* Gris-bleu */
+  --bs-secondary: #64748b;
   --bs-secondary-rgb: 100, 116, 139;
   
   /* -- Couleurs Sémantiques -- */
-  --bs-success: #16a34a; /* Vert */
-  --bs-info: #0ea5e9; /* Cyan */
-  --bs-warning: #f59e0b; /* Ambre */
-  --bs-danger: #dc2626; /* Rouge */
+  --bs-success: #16a34a;
+  --bs-info: #0ea5e9;
+  --bs-warning: #f59e0b;
+  --bs-danger: #dc2626;
   
   /* -- Couleurs de Fond et de Texte -- */
-  --bs-light: #f1f5f9; /* Un gris très clair pour les fonds de section */
-  --bs-dark: #1e293b; /* Un bleu très sombre pour le texte ou les fonds sombres */
-  
-  --bs-body-bg: #ffffff; /* Fond principal de la page (blanc) */
-  --bs-body-color: var(--bs-dark); /* Couleur du texte principal */
+  --bs-light: #f1f5f9;
+  --bs-dark: #1e293b;
+  --bs-body-bg: #ffffff;
+  --bs-body-color: var(--bs-dark);
   
   /* -- Bordures -- */
   --bs-border-color: #e2e8f0;
-  --bs-border-radius: 0.375rem; /* Rayon des coins pour les cartes, boutons, etc. */
+  --bs-border-radius: 0.375rem;
   --bs-border-radius-lg: 0.5rem;
   --bs-border-radius-sm: 0.25rem;
 
-  /* -- Polices de Caractères -- */
-  /* Si vous avez importé Inter, vous pouvez l'utiliser ici */
-  /* --bs-font-sans-serif: 'Inter', system-ui, -apple-system, sans-serif; */
+  /* -- Polices -- */
   --bs-font-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif;
   
   /* -- Liens -- */
@@ -55,31 +37,23 @@
   --bs-link-hover-color: color-mix(in srgb, var(--bs-primary) 80%, black);
 
   /* -- Ombres -- */
-  --bs-box-shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-  --bs-box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-  --bs-box-shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+  --bs-box-shadow: 0 0.5rem 1rem rgba(30, 41, 59, 0.1);
+  --bs-box-shadow-sm: 0 0.125rem 0.25rem rgba(30, 41, 59, 0.07);
+  --bs-box-shadow-lg: 0 1rem 3rem rgba(30, 41, 59, 0.12);
 }
 
-
-/* --- Thème Sombre (Optionnel) --- */
-/* S'active si vous ajoutez `data-bs-theme="dark"` à votre <html> ou <body> */
+/* --- Thème Sombre --- */
 [data-bs-theme="dark"] {
-  --bs-primary: #60a5fa; /* Un bleu plus lumineux pour le thème sombre */
+  color-scheme: dark;
+  --bs-primary: #60a5fa;
   --bs-primary-rgb: 96, 165, 250;
-
   --bs-secondary: #94a3b8;
-
-  --bs-body-bg: #0f172a; /* Fond bleu nuit très sombre */
-  --bs-body-color: #cbd5e1; /* Texte gris clair */
-  
+  --bs-body-bg: #0f172a;
+  --bs-body-color: #cbd5e1;
   --bs-border-color: #334155;
-  
-  /* Les cartes et autres éléments "light" deviennent sombres */
   --bs-light: #1e293b;
   --bs-light-rgb: 30, 41, 59;
-  
-  --bs-dark-rgb: 203, 213, 225; /* Inverse pour le thème sombre */
-
+  --bs-dark-rgb: 203, 213, 225;
   --bs-link-color: var(--bs-primary);
   --bs-link-hover-color: color-mix(in srgb, var(--bs-primary) 80%, white);
 }

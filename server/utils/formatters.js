@@ -15,6 +15,7 @@
  * @returns {string} La date formatée ou une chaîne vide si l'entrée est invalide.
  */
 const formatDateFr = (date) => {
+  if (!date) return '';
   const d = date instanceof Date ? date : new Date(date);
   if (isNaN(d.getTime())) {
     return '';
@@ -27,11 +28,12 @@ const formatDateFr = (date) => {
 };
 
 /**
- * Formate un objet Date pour inclure l'heure (JJ/MM/AAAA HH:mm:ss).
+ * Formate un objet Date pour inclure l'heure (JJ/MM/AAAA HH:mm).
  * @param {Date | string} date - L'objet Date ou une chaîne de date valide à formater.
  * @returns {string} La date et l'heure formatées.
  */
 const formatDateTimeFr = (date) => {
+  if (!date) return '';
   const d = date instanceof Date ? date : new Date(date);
   if (isNaN(d.getTime())) {
     return '';
@@ -42,9 +44,9 @@ const formatDateTimeFr = (date) => {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
+    // second: '2-digit', // Souvent non nécessaire pour l'affichage UI
     hour12: false,
-  }).format(d);
+  }).format(d).replace(',', ' à'); // Pour un affichage plus naturel comme "02/08/2025 à 15:30"
 };
 
 /**
@@ -57,8 +59,7 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat('fr-SN', {
     style: 'currency',
     currency: 'XOF',
-    currencyDisplay: 'code', // Utilise 'code' (FCFA) au lieu de 'symbol' (F CFA) pour plus de clarté
-  }).format(amount);
+  }).format(amount).replace('F CFA', 'FCFA'); // Remplacement pour éviter l'espace insécable si non désiré
 };
 
 /**
@@ -87,7 +88,7 @@ const formatPhoneSN = (phone) => {
  * @param {number} maxLength - La longueur maximale avant troncature.
  * @returns {string} La chaîne originale ou tronquée avec "..."
  */
-const truncateString = (str, maxLength) => {
+const truncateString = (str, maxLength = 50) => {
   if (typeof str !== 'string' || str.length <= maxLength) {
     return str;
   }
@@ -95,27 +96,27 @@ const truncateString = (str, maxLength) => {
 };
 
 /**
- * Formate un objet pour l'affichage dans les logs en retirant les champs sensibles.
- * @param {object} obj - L'objet à formater.
- * @returns {string} Une version JSON de l'objet sans les champs sensibles.
+ * Prend un objet et retourne une copie nettoyée pour le logging.
+ * Masque les valeurs des clés sensibles comme 'password', 'token', etc.
+ * @param {object} obj L'objet à nettoyer.
+ * @returns {object} Une copie de l'objet avec les données sensibles masquées.
  */
 const formatObjectForLog = (obj) => {
-  if (typeof obj !== 'object' || obj === null) return '';
+    if (typeof obj !== 'object' || obj === null) return obj;
 
-  try {
-    const sanitizedObj = { ...obj };
-    const sensitiveKeys = ['password', 'token', 'jwt', 'secret', 'authorization', 'apikey', 'passwordresettoken'];
+    try {
+        const newObj = JSON.parse(JSON.stringify(obj)); // Deep clone
+        const sensitiveKeys = ['password', 'token', 'jwt', 'secret', 'authorization', 'apikey', 'passwordresettoken'];
 
-    for (const key in sanitizedObj) {
-      if (sensitiveKeys.includes(key.toLowerCase())) {
-        sanitizedObj[key] = '***REDACTED***';
-      }
+        for (const key in newObj) {
+            if (sensitiveKeys.includes(key.toLowerCase())) {
+                newObj[key] = '[REDACTED]';
+            }
+        }
+        return newObj;
+    } catch (error) {
+        return { error: "Could not format object for logging." };
     }
-
-    return JSON.stringify(sanitizedObj, null, 2); // Le '2' indente le JSON pour la lisibilité
-  } catch (error) {
-    return "Could not format object for logging.";
-  }
 };
 
 

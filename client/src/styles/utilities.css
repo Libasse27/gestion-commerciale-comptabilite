@@ -129,3 +129,18 @@
 .min-vh-100 {
   min-height: 100vh;
 }
+
+.stat-card-icon {
+  width: 50px;
+  height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.bg-primary-light { background-color: rgba(var(--bs-primary-rgb), 0.1); color: var(--bs-primary); }
+.bg-success-light { background-color: rgba(var(--bs-success-rgb), 0.1); color: var(--bs-success); }
+.bg-warning-light { background-color: rgba(var(--bs-warning-rgb), 0.1); color: var(--bs-warning); }
+.bg-danger-light { background-color: rgba(var(--bs-danger-rgb), 0.1); color: var(--bs-danger); }
+.bg-info-light { background-color: rgba(var(--bs-info-rgb), 0.1); color: var(--bs-info); }

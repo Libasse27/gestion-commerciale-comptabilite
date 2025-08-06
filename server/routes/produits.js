@@ -1,62 +1,30 @@
-// ==============================================================================
-//           Routeur pour les Ressources Produits (/api/v1/produits)
-//
-// Ce fichier définit toutes les routes liées à la gestion du catalogue de
-// produits et services.
-//
-// Il sécurise les endpoints en s'assurant que l'utilisateur est authentifié,
-// puis en vérifiant ses permissions spécifiques pour chaque action (lecture,
-// gestion).
-// ==============================================================================
-
+// server/routes/produits.js
 const express = require('express');
-
-// --- Importation des Contrôleurs et Middlewares ---
 const produitController = require('../controllers/commercial/produitController');
-const authMiddleware = require('../middleware/auth');
+const categorieController = require('../controllers/commercial/categorieController');
+const { protect } = require('../middleware/auth');
 const { checkPermission } = require('../middleware/permissions');
 
-// --- Initialisation du Routeur ---
 const router = express.Router();
+router.use(protect);
 
+// --- Routes pour les Produits ---
+router.route('/')
+  .post(checkPermission('produit:manage'), produitController.createProduit)
+  .get(checkPermission('produit:read'), produitController.getAllProduits);
 
-// --- Application du Middleware d'Authentification ---
-// Toutes les routes de ce fichier requièrent que l'utilisateur soit connecté.
-router.use(authMiddleware);
+router.route('/:id')
+  .get(checkPermission('produit:read'), produitController.getProduitById)
+  .patch(checkPermission('produit:manage'), produitController.updateProduit)
+  .delete(checkPermission('produit:manage'), produitController.deleteProduit);
 
+// --- Routes pour les Catégories ---
+router.route('/categories/all')
+  .get(checkPermission('produit:read'), categorieController.getAllCategories)
+  .post(checkPermission('produit:manage'), categorieController.createCategorie);
 
-// --- Définition des Routes CRUD pour les Produits ---
+router.route('/categories/:id')
+    .patch(checkPermission('produit:manage'), categorieController.updateCategorie)
+    .delete(checkPermission('produit:manage'), categorieController.deleteCategorie);
 
-// Routes pour la collection de produits ( / )
-router
-  .route('/')
-  .post(
-    // Seuls les utilisateurs avec la permission de gérer le catalogue peuvent créer un produit
-    checkPermission('manage:produit'),
-    produitController.createProduit
-  )
-  .get(
-    // La plupart des utilisateurs connectés peuvent avoir le droit de lire le catalogue
-    checkPermission('read:produit'),
-    produitController.getAllProduits
-  );
-
-// Routes pour un document produit spécifique ( /:id )
-router
-  .route('/:id')
-  .get(
-    checkPermission('read:produit'),
-    produitController.getProduitById
-  )
-  .patch(
-    checkPermission('manage:produit'),
-    produitController.updateProduit
-  )
-  .delete(
-    checkPermission('manage:produit'),
-    produitController.deleteProduit
-  );
-
-
-// --- Exportation du Routeur ---
 module.exports = router;

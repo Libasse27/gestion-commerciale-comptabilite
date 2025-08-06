@@ -1,0 +1,25 @@
+<%# server/templates/email/welcome.ejs %>
+<%# Ce template est injecté dans baseLayout.ejs %>
+
+<p>Bonjour <%= user.firstName %>,</p>
+
+<p>
+    Bienvenue ! Votre compte sur la plateforme <strong><%= appName || 'ERP Sénégal' %></strong> a été créé avec succès.
+</p>
+
+<p>
+    Nous sommes ravis de vous compter parmi nous. Vous pouvez dès maintenant vous connecter à votre espace pour commencer à gérer votre activité.
+</p>
+
+<p style="text-align: center;">
+    <a href="<%= appUrl %>/login" class="button">Accéder à mon compte</a>
+</p>
+
+<p>
+    Si vous n'êtes pas à l'origine de cette inscription, veuillez ignorer cet email.
+</p>
+
+<p>
+    Cordialement,<br>
+    L'équipe <%= appName || 'ERP Sénégal' %>
+</p>

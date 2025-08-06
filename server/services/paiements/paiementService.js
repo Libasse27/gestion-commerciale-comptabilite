@@ -1,97 +1,91 @@
-// ==============================================================================
-//           Service de Gestion des Paiements (Logique Métier)
-//
-// Ce service est le point d'entrée unique pour l'enregistrement des transactions
-// financières (encaissements et décaissements).
-//
-// Il orchestre la mise à jour de plusieurs modèles pour garantir la
-// cohérence des données : Paiement, Facture, Client/Fournisseur, et
-// déclenche la génération des écritures comptables.
-// ==============================================================================
-
-// --- Import des Modèles et Services ---
+const mongoose = require('mongoose');
 const Paiement = require('../../models/paiements/Paiement');
 const Facture = require('../../models/commercial/Facture');
+const FactureAchat = require('../../models/commercial/FactureAchat');
 const Client = require('../../models/commercial/Client');
-const CompteComptable = require('../../models/comptabilite/CompteComptable');
-// const comptaService = require('../comptabilite/comptaService'); // Service futur
+const Fournisseur = require('../../models/commercial/Fournisseur');
+//const ecritureService = require('../comptabilite/ecritureService');
 const AppError = require('../../utils/appError');
-const numberUtils = require('../../utils/numberUtils');
+const { roundTo } = require('../../utils/numberUtils');
 const { logger } = require('../../middleware/logger');
 
-/**
- * Enregistre un encaissement reçu d'un client.
- * @param {object} paiementData
- * @param {string} paiementData.clientId
- * @param {number} paiementData.montant
- * @param {Date} paiementData.datePaiement
- * @param {string} paiementData.modePaiementId
- * @param {string} paiementData.compteTresorerieId
- * @param {Array<{factureId: string, montantImpute: number}>} paiementData.imputations
- * @param {string} userId - ID de l'utilisateur qui enregistre le paiement.
- * @returns {Promise<mongoose.Document>} Le document de paiement créé.
- */
 async function enregistrerEncaissementClient(paiementData, userId) {
-  const { clientId, montant, datePaiement, modePaiementId, compteTresorerieId, imputations, reference } = paiementData;
-  const montantTotal = numberUtils.parseNumber(montant);
-
-  // 1. Validation des données
-  if (montantTotal <= 0) {
-    throw new AppError('Le montant du paiement doit être positif.', 400);
-  }
-  const totalImpute = numberUtils.roundTo(imputations.reduce((sum, imp) => sum + imp.montantImpute, 0));
-  if (Math.abs(totalImpute - montantTotal) > 0.01) {
+  const { clientId, montant, datePaiement, modePaiementId, compteTresorerieId, imputations, reference, notes } = paiementData;
+  
+  const totalImpute = roundTo(imputations.reduce((sum, imp) => sum + imp.montantImpute, 0));
+  if (Math.abs(totalImpute - roundTo(montant)) > 0.01) {
     throw new AppError('La somme des montants imputés ne correspond pas au montant total du paiement.', 400);
   }
   
-  const client = await Client.findById(clientId);
-  if (!client) throw new AppError('Client non trouvé.', 404);
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const [nouveauPaiement] = await Paiement.create([{
+      datePaiement, montant, sens: 'Entrant',
+      tiers: clientId, tiersModel: 'Client',
+      modePaiement: modePaiementId, compteTresorerie: compteTresorerieId,
+      imputations: imputations.map(imp => ({ ...imp, factureModel: 'Facture' })),
+      enregistrePar: userId, reference, notes
+    }], { session });
 
-  // --- Début de la Transaction (logique atomique) ---
-  // Idéalement, toutes les opérations ci-dessous devraient être dans une transaction MongoDB
-  // pour garantir que soit tout réussit, soit tout échoue.
-
-  // 2. Créer l'enregistrement de paiement
-  const nouveauPaiement = await Paiement.create({
-    reference: reference || `PAY-CLIENT-${Date.now()}`,
-    datePaiement,
-    montant: montantTotal,
-    sens: 'Entrant',
-    tiers: clientId,
-    tiersModel: 'Client',
-    modePaiement: modePaiementId,
-    compteTresorerie: compteTresorerieId,
-    imputations: imputations.map(imp => ({ facture: imp.factureId, montantImpute: imp.montantImpute })),
-    enregistrePar: userId,
-  });
-
-  // 3. Mettre à jour chaque facture et le solde du client
-  let totalPayeSurFactures = 0;
-  for (const imputation of imputations) {
-    const facture = await Facture.findById(imputation.factureId);
-    if (!facture) throw new AppError(`Facture ${imputation.factureId} non trouvée.`, 404);
+    for (const imp of imputations) {
+      await Facture.findByIdAndUpdate(imp.factureId, { $inc: { montantPaye: roundTo(imp.montantImpute) } }, { session, runValidators: true });
+    }
     
-    facture.montantPaye += numberUtils.parseNumber(imputation.montantImpute);
-    // Le hook pre-save de Facture.js mettra à jour le `soldeDu` et le `statut`.
-    await facture.save();
-    totalPayeSurFactures += numberUtils.parseNumber(imputation.montantImpute);
+    await Client.findByIdAndUpdate(clientId, { $inc: { solde: -roundTo(montant) } }, { session });
+    
+    // await ecritureService.genererEcriturePaiement(nouveauPaiement, { session });
+    
+    await session.commitTransaction();
+    logger.info(`Encaissement ${nouveauPaiement.reference} de ${montant} enregistré pour le client ${clientId}.`);
+    return nouveauPaiement;
+  } catch (error) {
+    await session.abortTransaction();
+    throw new AppError(`L'opération a échoué : ${error.message}`, 500);
+  } finally {
+    session.endSession();
   }
-  
-  // Mettre à jour le solde du client (un solde positif signifie qu'il nous doit de l'argent)
-  client.solde -= totalPayeSurFactures;
-  await client.save();
-  
-  // 4. Générer l'écriture comptable
-  // TODO: Appeler le comptaService
-  // await comptaService.genererEcritureEncaissement(nouveauPaiement);
-  
-  logger.info(`Encaissement de ${montantTotal} enregistré pour le client ${client.nom}.`);
-
-  return nouveauPaiement;
 }
 
-// TODO: Créer une fonction symétrique `enregistrerDecaissementFournisseur`
+async function enregistrerDecaissementFournisseur(paiementData, userId) {
+    const { fournisseurId, montant, datePaiement, modePaiementId, compteTresorerieId, imputations, reference, notes } = paiementData;
+
+    const totalImpute = roundTo(imputations.reduce((sum, imp) => sum + imp.montantImpute, 0));
+    if (Math.abs(totalImpute - roundTo(montant)) > 0.01) {
+      throw new AppError('La somme des montants imputés ne correspond pas au montant total du paiement.', 400);
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const [nouveauPaiement] = await Paiement.create([{
+            datePaiement, montant, sens: 'Sortant',
+            tiers: fournisseurId, tiersModel: 'Fournisseur',
+            modePaiement: modePaiementId, compteTresorerie: compteTresorerieId,
+            imputations: imputations.map(imp => ({ ...imp, factureModel: 'FactureAchat' })),
+            enregistrePar: userId, reference, notes
+        }], { session });
+
+        for (const imp of imputations) {
+            await FactureAchat.findByIdAndUpdate(imp.factureId, { $inc: { montantPaye: roundTo(imp.montantImpute) } }, { session, runValidators: true });
+        }
+
+        await Fournisseur.findByIdAndUpdate(fournisseurId, { $inc: { solde: -roundTo(montant) } }, { session });
+
+        // await ecritureService.genererEcriturePaiement(nouveauPaiement, { session });
+
+        await session.commitTransaction();
+        logger.info(`Décaissement ${nouveauPaiement.reference} de ${montant} enregistré pour le fournisseur ${fournisseurId}.`);
+        return nouveauPaiement;
+    } catch (error) {
+        await session.abortTransaction();
+        throw new AppError(`L'opération a échoué : ${error.message}`, 500);
+    } finally {
+        session.endSession();
+    }
+}
 
 module.exports = {
   enregistrerEncaissementClient,
+  enregistrerDecaissementFournisseur,
 };

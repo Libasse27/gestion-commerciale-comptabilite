@@ -1,13 +1,4 @@
-// ==============================================================================
-//                Composant Pied de Page (Footer)
-//
-// Ce composant affiche le pied de page de l'application.
-// Il est conçu pour être simple et afficher des informations essentielles
-// comme le copyright et la version de l'application.
-//
-// L'année est calculée dynamiquement pour être toujours à jour.
-// ==============================================================================
-
+// client/src/components/common/Footer.jsx
 import React from 'react';
 import { Container } from 'react-bootstrap';
 
@@ -17,14 +8,14 @@ const Footer = () => {
 
   return (
     <footer className="footer bg-light border-top mt-auto py-3">
-      <Container>
-        <div className="d-flex justify-content-between align-items-center">
-          <span className="text-muted">
-            © {currentYear} ERP Commercial & Comptable Sénégal. Tous droits réservés.
-          </span>
-          <span className="text-muted">
+      <Container fluid className="px-4">
+        <div className="d-flex flex-column flex-sm-row justify-content-between align-items-center text-center">
+          <small className="text-muted mb-2 mb-sm-0">
+            © {currentYear} {import.meta.env.VITE_APP_NAME || 'ERP Sénégal'}. Tous droits réservés.
+          </small>
+          <small className="text-muted">
             Version {appVersion}
-          </span>
+          </small>
         </div>
       </Container>
     </footer>

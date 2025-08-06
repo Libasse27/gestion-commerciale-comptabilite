@@ -1,53 +1,65 @@
+// server/models/auth/Token.js
 // ==============================================================================
-//           Modèle Mongoose pour les Tokens Temporaires
+//           Modèle Mongoose pour les Tokens à Usage Unique
 //
-// Ce modèle est utilisé pour stocker des tokens à usage unique et à durée
-// de vie limitée, tels que les tokens de réinitialisation de mot de passe
-// ou de vérification d'email.
+// Ce modèle stocke les tokens temporaires (réinitialisation de mot de passe,
+// vérification d'email). Il est conçu pour être sécurisé et auto-nettoyant.
 //
-// Il utilise un index TTL (Time-To-Live) de MongoDB pour que les documents
-// expirés soient automatiquement supprimés de la base de données, ce qui
-// assure un nettoyage automatique et efficace.
+// Il utilise un index TTL sur le champ `expiresAt` pour que MongoDB
+// supprime automatiquement les tokens expirés.
 // ==============================================================================
 
 const mongoose = require('mongoose');
 
 const tokenSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-    ref: 'User', // Fait référence au modèle User
-  },
-  
-  token: {
-    type: String,
-    required: true,
-  },
-  
-  type: {
-    type: String,
-    required: true,
-    enum: ['passwordReset', 'emailVerification', 'invite'], // Types de tokens autorisés
-  },
+    /**
+     * Référence à l'utilisateur concerné par le token.
+     */
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'User',
+    },
+    
+    /**
+     * Le token haché (ex: avec SHA256). Ne jamais stocker le token en clair.
+     */
+    token: {
+        type: String,
+        required: true,
+    },
 
-  // Ce champ est utilisé par l'index TTL pour la suppression automatique
-  expiresAt: {
-    type: Date,
-    required: true,
-  },
-}, { 
-  timestamps: true, // Ajoute createdAt et updatedAt
-  collection: 'auth_tokens'
+    /**
+     * Le type de token, pour différencier les usages.
+     */
+    type: {
+        type: String,
+        required: true,
+        enum: ['passwordReset', 'emailVerification', 'invite'],
+    },
+
+    /**
+     * La date et l'heure d'expiration du token.
+     */
+    expiresAt: {
+        type: Date,
+        required: true,
+    },
+}, {
+    timestamps: { createdAt: true, updatedAt: false }, // On ne suit que la date de création
+    collection: 'auth_tokens',
 });
 
-// --- INDEX ---
+// --- INDEXS ---
+// Index pour accélérer la recherche de token pour un utilisateur et un type donné.
+tokenSchema.index({ userId: 1, type: 1 });
 
-// Index TTL (Time-To-Live) : MongoDB vérifiera périodiquement ce champ
-// et supprimera automatiquement tout document où `expiresAt` est dans le passé.
-// `expireAfterSeconds: 0` signifie "supprimer dès que la date est passée".
+// Index TTL : MongoDB vérifiera périodiquement ce champ et supprimera les documents
+// où la date d'expiration est passée.
+// `expireAfterSeconds: 0` signifie que le document est supprimé dès que `expiresAt` est dans le passé.
 tokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 
-const Token = mongoose.model('Token', tokenSchema);
+const Token = mongoose.models.Token || mongoose.model('Token', tokenSchema);
 
 module.exports = Token;

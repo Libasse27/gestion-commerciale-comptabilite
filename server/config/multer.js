@@ -1,79 +1,68 @@
+// server/config/multer.js
 // ==============================================================================
-//                  Configuration du Middleware Multer
+//                  CONFIGURATION DU MIDDLEWARE D'UPLOAD (MULTER)
 //
-// Ce module configure et exporte deux stratégies Multer distinctes :
+// Ce module configure deux stratégies pour gérer les uploads de fichiers :
 //
 // 1. uploadToDisk:
-//    - Stocke les fichiers directement sur le disque du serveur.
-//    - Idéal pour un environnement de développement local simple et rapide.
+//    - Stocke les fichiers sur le disque du serveur.
+//    - Idéal pour le développement local.
 //
 // 2. uploadToMemory:
-//    - Stocke les fichiers temporairement dans la mémoire vive (RAM) sous forme de Buffer.
-//    - C'est la méthode requise pour envoyer ensuite le fichier vers un service
-//      cloud comme Cloudinary, AWS S3, etc., sans jamais l'écrire sur le disque.
-//    - C'est la méthode recommandée pour la production.
-//
+//    - Stocke les fichiers en RAM (Buffer).
+//    - Nécessaire pour traiter les fichiers avant de les envoyer à un service
+//      cloud (Cloudinary, S3, etc.). Recommandé pour la production.
 // ==============================================================================
 
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { logger } = require('../middleware/logger');
+const AppError = require('../utils/appError');
 
 // --- Configuration Commune ---
 
-// Chemin où les fichiers seront stockés localement (pour uploadToDisk)
 const UPLOAD_DIRECTORY = process.env.UPLOAD_PATH || './uploads';
 
-// S'assurer que le dossier d'upload existe pour éviter les erreurs
+// S'assure que le dossier d'upload existe
 if (!fs.existsSync(UPLOAD_DIRECTORY)) {
-  fs.mkdirSync(UPLOAD_DIRECTORY, { recursive: true });
+  try {
+    fs.mkdirSync(UPLOAD_DIRECTORY, { recursive: true });
+    logger.info(`Dossier d'upload créé à l'emplacement : ${UPLOAD_DIRECTORY}`);
+  } catch (error) {
+    logger.error(`Impossible de créer le dossier d'upload : ${error.message}`);
+  }
 }
 
 /**
- * Filtre les fichiers pour n'accepter que certains types MIME.
- * Cela ajoute une couche de sécurité en empêchant l'upload de fichiers potentiellement dangereux.
+ * Filtre les fichiers par type MIME pour la sécurité.
  */
 const fileFilter = (req, file, cb) => {
   const allowedMimeTypes = [
-    // Images
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-    // Documents
-    'application/pdf',
-    'application/msword', // .doc
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-    'application/vnd.ms-excel', // .xls
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-    'text/csv',
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+    'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv',
   ];
 
   if (allowedMimeTypes.includes(file.mimetype)) {
-    // Accepter le fichier
     cb(null, true);
   } else {
-    // Rejeter le fichier en créant une erreur que le middleware de gestion d'erreurs pourra attraper.
-    const error = new Error('Type de fichier non supporté. Formats acceptés : images, PDF, Word, Excel, CSV.');
-    error.code = 'LIMIT_UNEXPECTED_FILE';
-    cb(error, false);
+    cb(new AppError('Type de fichier non supporté. Formats acceptés : images, PDF, Word, Excel, CSV.', 400), false);
   }
 };
 
 const limits = {
-  // Limite la taille des fichiers. La valeur doit être en bytes.
-  fileSize: parseInt(process.env.MAX_FILE_SIZE) || 1024 * 1024 * 10, // 10MB par défaut
+  fileSize: parseInt(process.env.MAX_FILE_SIZE, 10) || 10 * 1024 * 1024, // 10MB par défaut
 };
 
 
-// --- Stratégie 1: Stockage sur le Disque (Développement) ---
+// --- Stratégie 1: Stockage sur le Disque (pour le développement) ---
 const diskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, UPLOAD_DIRECTORY);
   },
   filename: (req, file, cb) => {
-    // Génère un nom de fichier unique pour éviter les collisions
-    const fieldName = file.fieldname.replace(/[^a-zA-Z0-9]/g, '_'); // Nettoyage du nom de champ
+    const fieldName = file.fieldname.replace(/[^a-zA-Z0-9]/g, '_');
     const timestamp = Date.now();
     const extension = path.extname(file.originalname);
     cb(null, `${fieldName}-${timestamp}${extension}`);
@@ -82,22 +71,21 @@ const diskStorage = multer.diskStorage({
 
 const uploadToDisk = multer({
   storage: diskStorage,
-  limits: limits,
-  fileFilter: fileFilter,
+  limits,
+  fileFilter,
 });
 
 
-// --- Stratégie 2: Stockage en Mémoire (Production / Cloud) ---
+// --- Stratégie 2: Stockage en Mémoire (pour la production / cloud) ---
 const memoryStorage = multer.memoryStorage();
 
 const uploadToMemory = multer({
   storage: memoryStorage,
-  limits: limits,
-  fileFilter: fileFilter,
+  limits,
+  fileFilter,
 });
 
 
-// --- Exportation des deux stratégies ---
 module.exports = {
   uploadToDisk,
   uploadToMemory,

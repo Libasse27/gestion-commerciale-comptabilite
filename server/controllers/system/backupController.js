@@ -1,66 +1,39 @@
-// ==============================================================================
-//           Contrôleur pour la Gestion des Sauvegardes
-//
-// Ce contrôleur gère les requêtes HTTP pour les opérations liées aux
-// sauvegardes de la base de données. Il permet aux administrateurs de
-// déclencher des sauvegardes manuelles et de consulter l'historique.
-//
-// Il délègue toute la logique technique au `backupService`.
-// ==============================================================================
-
 const backupService = require('../../services/exports/backupService');
 const asyncHandler = require('../../utils/asyncHandler');
+const fs = require('fs'); // Utiliser fs pour vérifier l'existence du fichier
+const AppError = require('../../utils/appError');
 
-/**
- * @desc    Déclencher une sauvegarde manuelle de la base de données
- * @route   POST /api/v1/system/backups/trigger
- * @access  Privé (Admin)
- */
 exports.triggerBackup = asyncHandler(async (req, res, next) => {
-  // On délègue l'exécution de la sauvegarde au service.
-  // C'est une opération "fire-and-forget" qui s'exécute en arrière-plan.
-  // On passe le type 'Manuelle' et l'ID de l'utilisateur qui a déclenché l'action.
   backupService.runDatabaseBackup('Manuelle', req.user.id);
-
-  // On répond immédiatement avec un statut 202 Accepted pour indiquer
-  // que la demande a été acceptée et est en cours de traitement.
   res.status(202).json({
     status: 'success',
-    message: 'La sauvegarde a été initiée. Elle s\'exécutera en arrière-plan et sera disponible dans quelques instants.',
+    message: 'La sauvegarde a été initiée et s\'exécutera en arrière-plan.',
   });
 });
 
-
-/**
- * @desc    Récupérer l'historique de toutes les sauvegardes
- * @route   GET /api/v1/system/backups
- * @access  Privé (Admin)
- */
 exports.getBackupHistory = asyncHandler(async (req, res, next) => {
-  const backups = await backupService.getBackupHistory();
-
-  res.status(200).json({
-    status: 'success',
-    results: backups.length,
-    data: {
-      backups,
-    },
-  });
+  // Passer les query params au service pour la pagination
+  const history = await backupService.getBackupHistory(req.query);
+  res.status(200).json({ status: 'success', ...history });
 });
 
-
-/**
- * @desc    Télécharger un fichier de sauvegarde spécifique
- * @route   GET /api/v1/system/backups/:id/download
- * @access  Privé (Admin)
- */
 exports.downloadBackup = asyncHandler(async (req, res, next) => {
-    // TODO: Implémenter la logique pour trouver la sauvegarde par ID,
-    // vérifier que le fichier existe sur le disque, puis le streamer
-    // au client avec les bons en-têtes Content-Type et Content-Disposition.
-    
-    res.status(501).json({
-        status: 'in_progress',
-        message: 'Le téléchargement des sauvegardes est en cours de développement.'
+    // 1. Récupérer les informations de la sauvegarde depuis la DB
+    const backup = await backupService.getBackupById(req.params.id);
+
+    // 2. Vérifier que la sauvegarde a réussi et que le fichier existe physiquement
+    if (backup.statut !== 'Réussie') {
+        return next(new AppError('Impossible de télécharger une sauvegarde qui a échoué.', 400));
+    }
+    if (!fs.existsSync(backup.chemin)) {
+        return next(new AppError('Le fichier de sauvegarde n\'existe plus sur le serveur.', 404));
+    }
+
+    // 3. Envoyer le fichier au client
+    res.download(backup.chemin, backup.nomFichier, (err) => {
+        if (err) {
+            // Si une erreur se produit pendant le streaming, elle est passée ici
+            next(err);
+        }
     });
 });

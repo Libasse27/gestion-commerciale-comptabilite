@@ -1,26 +1,28 @@
 // ==============================================================================
-//                  Configuration de la Gestion des JWT
+//                  MODULE DE GESTION DES JSON WEB TOKENS (JWT)
 //
-// Ce module centralise la création et la vérification des JSON Web Tokens.
-// Il utilise des secrets et des durées d'expiration distincts pour les
-// access tokens (courte durée) et les refresh tokens (longue durée).
+// Ce module centralise la création et la vérification des JWT.
+// Il gère deux types de tokens pour une sécurité renforcée :
 //
-// Les secrets DOIVENT être définis dans le fichier .env et ne jamais
-// être inscrits en dur dans le code.
+//  - Access Token : Courte durée de vie, utilisé pour accéder aux routes protégées.
+//  - Refresh Token : Longue durée de vie, utilisé uniquement pour obtenir un
+//                    nouvel Access Token.
+//
+// Les secrets et durées de vie sont lus depuis les variables d'environnement.
 // ==============================================================================
 
 const jwt = require('jsonwebtoken');
+const { logger } = require('../middleware/logger');
 
 /**
  * Génère un Access Token.
- * C'est le token principal, de courte durée, utilisé pour authentifier
- * la plupart des requêtes API.
- * @param {string} userId - L'identifiant unique de l'utilisateur (provenant de MongoDB).
+ * @param {string} userId - L'ID de l'utilisateur (payload du token).
  * @returns {string} Le token JWT signé.
  */
 const generateAccessToken = (userId) => {
   if (!process.env.JWT_SECRET || !process.env.JWT_EXPIRES_IN) {
-    throw new Error('JWT_SECRET ou JWT_EXPIRES_IN non défini dans .env');
+    logger.error('CONFIG ERROR: JWT_SECRET ou JWT_EXPIRES_IN non défini dans .env');
+    throw new Error('Configuration JWT invalide pour Access Token.');
   }
 
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
@@ -30,14 +32,13 @@ const generateAccessToken = (userId) => {
 
 /**
  * Génère un Refresh Token.
- * Ce token a une durée de vie plus longue et n'est utilisé que pour
- * obtenir un nouvel Access Token lorsque celui-ci est expiré.
- * @param {string} userId - L'identifiant unique de l'utilisateur.
+ * @param {string} userId - L'ID de l'utilisateur (payload du token).
  * @returns {string} Le refresh token JWT signé.
  */
 const generateRefreshToken = (userId) => {
   if (!process.env.JWT_REFRESH_SECRET || !process.env.JWT_REFRESH_EXPIRES_IN) {
-    throw new Error('JWT_REFRESH_SECRET ou JWT_REFRESH_EXPIRES_IN non défini dans .env');
+    logger.error('CONFIG ERROR: JWT_REFRESH_SECRET ou JWT_REFRESH_EXPIRES_IN non défini dans .env');
+    throw new Error('Configuration JWT invalide pour Refresh Token.');
   }
 
   return jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, {
@@ -48,14 +49,14 @@ const generateRefreshToken = (userId) => {
 /**
  * Vérifie un Access Token.
  * @param {string} token - Le token à vérifier.
- * @returns {object | null} Le payload décodé du token si valide, sinon null.
+ * @returns {object | null} Le payload décodé si le token est valide, sinon null.
  */
 const verifyAccessToken = (token) => {
   try {
     return jwt.verify(token, process.env.JWT_SECRET);
   } catch (error) {
-    // Les erreurs (TokenExpiredError, JsonWebTokenError) sont gérées en retournant null.
-    // Le code appelant saura que le token est invalide.
+    // Il est normal qu'un token expire, donc on le log en 'warn' et non 'error'.
+    logger.warn(`Échec de la vérification de l'Access Token: ${error.message}`);
     return null;
   }
 };
@@ -63,12 +64,13 @@ const verifyAccessToken = (token) => {
 /**
  * Vérifie un Refresh Token.
  * @param {string} token - Le refresh token à vérifier.
- * @returns {object | null} Le payload décodé du token si valide, sinon null.
+ * @returns {object | null} Le payload décodé si le token est valide, sinon null.
  */
 const verifyRefreshToken = (token) => {
   try {
     return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
   } catch (error) {
+    logger.warn(`Échec de la vérification du Refresh Token: ${error.message}`);
     return null;
   }
 };

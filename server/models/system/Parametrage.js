@@ -1,12 +1,11 @@
+// server/models/system/Parametrage.js
 // ==============================================================================
 //           Modèle Mongoose pour les Paramètres Généraux du Système
 //
-// Ce modèle stocke les paramètres de configuration généraux de l'application
-// sous forme de paires clé-valeur.
-//
-// Il permet de configurer le comportement de l'application et de personnaliser
-// les informations de l'entreprise (nom, adresse, logo) qui apparaissent sur
-// les documents, sans avoir à modifier le code.
+// Ce modèle stocke tous les paramètres de configuration de l'application
+// sous forme de paires clé-valeur. Il offre une approche unifiée et flexible.
+// Un administrateur peut modifier ces paramètres via l'interface sans
+// nécessiter de nouvelle version de l'application.
 // ==============================================================================
 
 const mongoose = require('mongoose');
@@ -15,14 +14,14 @@ const parametrageSchema = new mongoose.Schema(
   {
     /**
      * La clé unique et technique du paramètre.
-     * Ex: 'NOM_ENTREPRISE', 'ADRESSE_ENTREPRISE', 'LOGO_URL', 'STOCK_NEGATIF_AUTORISE'
      */
     cle: {
       type: String,
       required: true,
       unique: true,
       trim: true,
-      uppercase: true, // Bonne pratique pour les clés
+      uppercase: true,
+      immutable: true,
     },
 
     /**
@@ -42,12 +41,12 @@ const parametrageSchema = new mongoose.Schema(
     },
 
     /**
-     * Le type de données de la valeur, pour aider le frontend à afficher
-     * le bon type de champ de saisie (texte, switch, etc.).
+     * Le type de données de la valeur, pour aider le frontend.
      */
     type: {
       type: String,
-      enum: ['Texte', 'Nombre', 'Booleen', 'URL', 'JSON'],
+      enum: ['Texte', 'Nombre', 'Booleen', 'URL', 'TexteLong', 'JSON'],
+      required: true,
       default: 'Texte',
     },
     
@@ -56,12 +55,13 @@ const parametrageSchema = new mongoose.Schema(
      */
     groupe: {
         type: String,
-        enum: ['Entreprise', 'Ventes', 'Stock', 'Comptabilite'],
+        enum: ['Entreprise', 'Ventes', 'Stock', 'Comptabilite', 'Fiscalite'],
+        required: true,
         default: 'Entreprise',
     },
     
     /**
-     * L'utilisateur qui a effectué la dernière modification.
+     * L'utilisateur qui a effectué la dernière modification (pour l'audit).
      */
     modifiePar: {
         type: mongoose.Schema.Types.ObjectId,
@@ -74,6 +74,8 @@ const parametrageSchema = new mongoose.Schema(
   }
 );
 
-const Parametrage = mongoose.model('Parametrage', parametrageSchema);
+parametrageSchema.index({ groupe: 1, cle: 1 });
+
+const Parametrage = mongoose.models.Parametrage || mongoose.model('Parametrage', parametrageSchema);
 
 module.exports = Parametrage;

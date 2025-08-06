@@ -1,47 +1,31 @@
-// ==============================================================================
-//           Composant Bouton d'Impression
-//
-// Ce composant simple fournit un bouton standardisé pour déclencher
-// l'impression d'un élément spécifique de la page.
-//
-// Il utilise la fonction `printElement` de notre module `printUtils`
-// pour isoler et imprimer une section du DOM.
-// ==============================================================================
-
+// client/src/components/print/PrintButton.jsx
 import React from 'react';
 import { Button } from 'react-bootstrap';
-import { PrinterFill } from 'react-bootstrap-icons';
-import { printElement } from '../../utils/printUtils';
+import { Printer } from 'react-bootstrap-icons';
+import { printElementById } from '../../utils/printUtils';
 
 /**
- * Un bouton qui déclenche la boîte de dialogue d'impression du navigateur
- * pour un élément spécifique.
- *
- * @param {object} props - Les propriétés du composant.
- * @param {string} props.elementIdToPrint - L'ID de l'élément du DOM à imprimer.
- * @param {string} [props.pageTitle='Document'] - Le titre qui apparaîtra dans l'en-tête de la page imprimée.
- * @param {string} [props.buttonText='Imprimer'] - Le texte du bouton.
- * @param {React.ReactNode} [props.icon=<PrinterFill />] - L'icône à afficher sur le bouton.
+ * Un bouton qui déclenche l'impression d'un élément spécifique.
  */
 const PrintButton = ({
   elementIdToPrint,
   pageTitle = 'Document',
-  buttonText = 'Imprimer',
-  icon = <PrinterFill className="me-2" />,
-  ...buttonProps // Pour passer d'autres props (variant, size, etc.)
+  children = 'Imprimer',
+  variant = 'secondary', // Une couleur moins intrusive par défaut
+  ...buttonProps
 }) => {
   const handlePrint = () => {
     if (!elementIdToPrint) {
       console.error("L'ID de l'élément à imprimer (`elementIdToPrint`) est manquant.");
       return;
     }
-    printElement(elementIdToPrint, pageTitle);
+    printElementById(elementIdToPrint, pageTitle);
   };
 
   return (
-    <Button onClick={handlePrint} {...buttonProps}>
-      {icon}
-      {buttonText}
+    <Button variant={variant} onClick={handlePrint} {...buttonProps}>
+      <Printer className="me-2" />
+      {children}
     </Button>
   );
 };

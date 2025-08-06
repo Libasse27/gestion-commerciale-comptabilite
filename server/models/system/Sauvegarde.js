@@ -1,3 +1,4 @@
+// server/models/system/Sauvegarde.js
 // ==============================================================================
 //           Modèle Mongoose pour le Journal des Sauvegardes
 //
@@ -25,8 +26,6 @@ const sauvegardeSchema = new mongoose.Schema(
 
     /**
      * Le type de sauvegarde.
-     * - Automatique: Lancée par une tâche planifiée (cron job).
-     * - Manuelle: Déclenchée par un administrateur depuis l'interface.
      */
     type: {
         type: String,
@@ -48,6 +47,7 @@ const sauvegardeSchema = new mongoose.Schema(
      */
     taille: {
         type: Number, // en bytes
+        default: 0,
     },
     
     /**
@@ -69,7 +69,6 @@ const sauvegardeSchema = new mongoose.Schema(
 
     /**
      * L'utilisateur qui a initié la sauvegarde (pour les manuelles).
-     * Null pour les sauvegardes automatiques.
      */
     initiateur: {
       type: mongoose.Schema.Types.ObjectId,
@@ -82,15 +81,17 @@ const sauvegardeSchema = new mongoose.Schema(
      */
     messageErreur: {
         type: String,
+        trim: true,
     }
   },
   {
-    timestamps: { createdAt: true, updatedAt: false }, // Seul `createdAt` est pertinent
+    timestamps: { createdAt: true, updatedAt: false },
     collection: 'system_sauvegardes',
   }
 );
 
+sauvegardeSchema.index({ createdAt: -1 });
 
-const Sauvegarde = mongoose.model('Sauvegarde', sauvegardeSchema);
+const Sauvegarde = mongoose.models.Sauvegarde || mongoose.model('Sauvegarde', sauvegardeSchema);
 
 module.exports = Sauvegarde;

@@ -1,71 +1,52 @@
-// ==============================================================================
-//           Composant d'Affichage des Statistiques d'un Client
-//
-// Ce composant "widget" affiche les indicateurs de performance clés (KPIs)
-// pour un client spécifique.
-//
-// Il est conçu pour être autonome : il reçoit un ID de client et se charge
-// lui-même de récupérer et d'afficher les données.
-// ==============================================================================
-
-import React, { useState, useEffect } from 'react';
+// client/src/pages/clients/ClientStats.jsx
+import React, { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Row, Col } from 'react-bootstrap';
-import StatCard from '../../components/charts/StatCard'; // Notre composant de KPI réutilisable
-import { BarChart, PiggyBank, ReceiptCutoff } from 'react-bootstrap-icons';
-import { formatCurrency } from '../../utils/currencyUtils';
-import apiClient from '../../services/api'; // On peut utiliser apiClient directement pour un appel simple
+import { fetchClientKpis } from '../../store/slices/clientsSlice';
+import StatCard from '../../components/charts/StatCard';
+import { formatCurrency } from '../../utils/formatters';
+import { Cart4, ExclamationCircle, JournalCheck } from 'react-bootstrap-icons';
 
 const ClientStats = ({ clientId }) => {
-  const [stats, setStats] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const dispatch = useDispatch();
+  const { clientKpis, statusKpis } = useSelector((state) => state.clients);
+  const isLoading = statusKpis === 'loading';
 
   useEffect(() => {
-    if (!clientId) return;
-
-    const fetchStats = async () => {
-      setIsLoading(true);
-      try {
-        const response = await apiClient.get(`/statistiques/client/${clientId}`);
-        setStats(response.data.data.kpis);
-      } catch (error) {
-        console.error("Erreur lors de la récupération des stats du client:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, [clientId]);
+    if (clientId) {
+      dispatch(fetchClientKpis(clientId));
+    }
+  }, [clientId, dispatch]);
 
   return (
     <Row className="g-4">
       <Col md={4}>
         <StatCard
-          icon={BarChart}
+          icon={Cart4}
           title="Chiffre d'Affaires Total"
-          value={stats?.chiffreAffairesTotal || 0}
+          value={clientKpis?.chiffreAffairesTotal ?? 0}
           formatter={formatCurrency}
+          iconVariant="primary"
           isLoading={isLoading}
-          iconVariant="success"
         />
       </Col>
       <Col md={4}>
         <StatCard
-          icon={ReceiptCutoff}
+          icon={ExclamationCircle}
           title="Total Impayé"
-          value={stats?.totalImpaye || 0}
+          value={clientKpis?.totalImpaye ?? 0}
           formatter={formatCurrency}
-          isLoading={isLoading}
           iconVariant="danger"
+          isLoading={isLoading}
         />
       </Col>
       <Col md={4}>
         <StatCard
-          icon={PiggyBank}
+          icon={JournalCheck}
           title="Nombre de Commandes"
-          value={stats?.nombreCommandes || 0}
+          value={clientKpis?.nombreCommandes ?? 0}
+          iconVariant="success"
           isLoading={isLoading}
-          iconVariant="info"
         />
       </Col>
     </Row>

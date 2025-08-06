@@ -1,139 +1,138 @@
-// ==============================================================================
-//           Slice Redux pour la Gestion de la Ressource "Clients" (Version Finale)
-//
-// Rôle : Gère l'état de la ressource "Client", y compris la liste, la pagination,
-// et les opérations CRUD.
-//
-// Bonnes Pratiques :
-// - Utilisation de `createAsyncThunk` pour encapsuler la logique asynchrone.
-// - Utilisation de `addMatcher` pour réduire la duplication de code pour les
-//   états `pending` et `rejected`.
-// - Mise à jour optimiste de l'état après les opérations `create`, `update`, `delete`.
-// ==============================================================================
-
+// client/src/store/slices/clientsSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import clientsService from '../../services/clientsService';
 import { getErrorMessage } from '../../utils/helpers';
+import { REDUX_SLICE_NAMES } from '../../utils/constants';
 
-// --- Thunks Asynchrones ---
-// La logique des thunks reste la même.
-export const fetchClients = createAsyncThunk('clients/fetchAll', async (params, thunkAPI) => {
-  try { return await clientsService.getAll(params); }
-  catch (error) { return thunkAPI.rejectWithValue(getErrorMessage(error)); }
-});
+// --- Thunks ---
+export const fetchClients = createAsyncThunk(
+  `${REDUX_SLICE_NAMES.CLIENTS}/fetchAll`,
+  async (params, thunkAPI) => {
+    try { return await clientsService.getAllClients(params); }
+    catch (error) { return thunkAPI.rejectWithValue(getErrorMessage(error)); }
+  }
+);
 
-export const fetchClientById = createAsyncThunk('clients/fetchById', async (id, thunkAPI) => {
-  try { return await clientsService.getById(id); }
-  catch (error) { return thunkAPI.rejectWithValue(getErrorMessage(error)); }
-});
+export const fetchClientById = createAsyncThunk(
+  `${REDUX_SLICE_NAMES.CLIENTS}/fetchById`,
+  async (clientId, thunkAPI) => {
+    try { return await clientsService.getClientById(clientId); }
+    catch (error) { return thunkAPI.rejectWithValue(getErrorMessage(error)); }
+  }
+);
 
-export const createClient = createAsyncThunk('clients/create', async (clientData, thunkAPI) => {
-  try { return await clientsService.create(clientData); }
-  catch (error) { return thunkAPI.rejectWithValue(getErrorMessage(error)); }
-});
+export const createClient = createAsyncThunk(
+  `${REDUX_SLICE_NAMES.CLIENTS}/create`,
+  async (clientData, thunkAPI) => {
+    try { return await clientsService.createClient(clientData); }
+    catch (error) { return thunkAPI.rejectWithValue(getErrorMessage(error)); }
+  }
+);
 
-export const updateClient = createAsyncThunk('clients/update', async ({ id, updateData }, thunkAPI) => {
-  try { return await clientsService.update(id, updateData); }
-  catch (error) { return thunkAPI.rejectWithValue(getErrorMessage(error)); }
-});
+export const updateClient = createAsyncThunk(
+  `${REDUX_SLICE_NAMES.CLIENTS}/update`,
+  async ({ clientId, updateData }, thunkAPI) => {
+    try { return await clientsService.updateClient(clientId, updateData); }
+    catch (error) { return thunkAPI.rejectWithValue(getErrorMessage(error)); }
+  }
+);
 
-export const deleteClient = createAsyncThunk('clients/delete', async (id, thunkAPI) => {
-  try { await clientsService.remove(id); return id; }
-  catch (error) { return thunkAPI.rejectWithValue(getErrorMessage(error)); }
-});
+export const deleteClient = createAsyncThunk(
+  `${REDUX_SLICE_NAMES.CLIENTS}/delete`,
+  async (clientId, thunkAPI) => {
+    try { await clientsService.deleteClient(clientId); return clientId; }
+    catch (error) { return thunkAPI.rejectWithValue(getErrorMessage(error)); }
+  }
+);
+
+export const fetchClientKpis = createAsyncThunk(
+  `${REDUX_SLICE_NAMES.CLIENTS}/fetchKpis`,
+  async (clientId, thunkAPI) => {
+    try {
+      return await clientsService.getClientKpis(clientId);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(getErrorMessage(error));
+    }
+  }
+);
 
 
-// --- État Initial ---
+// --- Slice ---
 const initialState = {
-  items: [],              // La liste des clients actuellement affichée
-  selectedClient: null,   // Les données du client pour la page de détail
-  pagination: {},         // Les informations de pagination de l'API
-  status: 'idle',         // 'idle' | 'loading' | 'succeeded' | 'failed'
-  isError: false,
+  clients: [],
+  clientCourant: null,
+  clientKpis: null,
+  pagination: { page: 1, limit: 15, total: 0, pages: 1 },
+  status: 'idle',
+  statusKpis: 'idle',
   message: '',
 };
 
-
-// --- Création du Slice ---
 export const clientsSlice = createSlice({
-  name: 'clients',
+  name: REDUX_SLICE_NAMES.CLIENTS,
   initialState,
   reducers: {
-    // Action pour réinitialiser les états d'erreur/message sans affecter les données
-    resetStatus: (state) => {
-      state.isError = false;
-      state.message = '';
-      state.status = 'idle';
+    reset: (state) => { 
+      state.status = 'idle'; 
+      state.statusKpis = 'idle';
+      state.message = ''; 
     },
-    // Action pour vider le client sélectionné, à appeler lors du "démontage" de la page de détail
     clearSelectedClient: (state) => {
-        state.selectedClient = null;
-    }
+      state.clientCourant = null;
+      state.clientKpis = null;
+      state.statusKpis = 'idle';
+    },
   },
   extraReducers: (builder) => {
     builder
-      // --- Cas "Fulfilled" spécifiques ---
+      // CRUD Reducers
       .addCase(fetchClients.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        // La réponse de l'API doit contenir .data et .pagination
-        state.items = action.payload.data;
+        state.clients = action.payload.data.clients;
         state.pagination = action.payload.pagination;
       })
       .addCase(fetchClientById.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.selectedClient = action.payload.data;
-      })
-      .addCase(createClient.fulfilled, (state, action) => {
-        state.status = 'succeeded';
-        // Ajoute le nouveau client en haut de la liste pour un retour visuel immédiat
-        state.items.unshift(action.payload.data);
+        state.clientCourant = action.payload.client;
       })
       .addCase(updateClient.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        const updatedClient = action.payload.data;
-        // Met à jour le client dans la liste
-        const index = state.items.findIndex(client => client._id === updatedClient._id);
-        if (index !== -1) {
-          state.items[index] = updatedClient;
-        }
-        // Met également à jour le client sélectionné si c'est le même
-        if (state.selectedClient?._id === updatedClient._id) {
-          state.selectedClient = updatedClient;
+        const updated = action.payload; // Le service renvoie directement le client mis à jour
+        state.clients = state.clients.map(c => (c._id === updated._id ? updated : c));
+        if (state.clientCourant?._id === updated._id) {
+          state.clientCourant = updated;
         }
       })
       .addCase(deleteClient.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        // action.payload contient l'ID retourné par le thunk
-        state.items = state.items.filter(client => client._id !== action.payload);
+        state.clients = state.clients.filter(c => c._id !== action.payload);
       })
-
-      // --- Matchers génériques pour `pending` et `rejected` ---
-      // Ceci s'applique à TOUS les thunks ci-dessus, évitant la duplication de code.
+      .addCase(createClient.fulfilled, (state) => {
+        state.status = 'succeeded'; // Pas besoin de modifier l'état, on re-fetchera la liste
+      })
+      // KPI Reducers
+      .addCase(fetchClientKpis.pending, (state) => {
+        state.statusKpis = 'loading';
+      })
+      .addCase(fetchClientKpis.fulfilled, (state, action) => {
+        state.statusKpis = 'succeeded';
+        state.clientKpis = action.payload.kpis;
+      })
+      .addCase(fetchClientKpis.rejected, (state, action) => {
+        state.statusKpis = 'failed';
+        state.message = action.payload;
+      })
+      // Generic Matchers for main CRUD status
       .addMatcher(
-        (action) => action.type.startsWith('clients/') && action.type.endsWith('/pending'),
-        (state) => {
-          state.status = 'loading';
-          state.isError = false; // Réinitialise l'erreur au début d'une nouvelle requête
-        }
+        (action) => action.type.startsWith('clients/') && !action.type.includes('Kpis') && action.type.endsWith('/pending'),
+        (state) => { state.status = 'loading'; }
       )
       .addMatcher(
-        (action) => action.type.startsWith('clients/') && action.type.endsWith('/rejected'),
-        (state, action) => {
-          state.status = 'failed';
-          state.isError = true;
-          state.message = action.payload; // Le message d'erreur est fourni par `rejectWithValue`
-        }
+        (action) => action.type.startsWith('clients/') && !action.type.includes('Kpis') && action.type.endsWith('/rejected'),
+        (state, action) => { state.status = 'failed'; state.message = action.payload; }
       );
   },
 });
 
-// --- Exportations ---
-export const { resetStatus, clearSelectedClient } = clientsSlice.actions;
-
-// Sélecteurs pour une utilisation propre dans les composants
-export const selectAllClients = (state) => state.clients.items;
-export const selectClientById = (state) => state.clients.selectedClient;
-export const selectClientsPagination = (state) => state.clients.pagination;
-export const selectClientsStatus = (state) => state.clients.status;
-
+export const { reset, clearSelectedClient } = clientsSlice.actions;
 export default clientsSlice.reducer;

@@ -1,17 +1,4 @@
-// ==============================================================================
-//                     CONSTANTES GLOBALES DE L'APPLICATION CLIENT
-//
-// Ce fichier centralise toutes les valeurs constantes utilisées dans l'application
-// frontend. L'utilisation de ce fichier permet de :
-//   - Éviter les chaînes de caractères "magiques" et les fautes de frappe.
-//   - Faciliter la maintenance et les mises à jour.
-//   - Avoir une source unique de vérité pour les valeurs critiques.
-// ==============================================================================
-
-/**
- * Rôles des utilisateurs.
- * Doit être synchronisé avec les rôles définis dans `server/utils/constants.js`.
- */
+// client/src/utils/constants.js
 export const USER_ROLES = Object.freeze({
   ADMIN: 'Admin',
   COMPTABLE: 'Comptable',
@@ -19,65 +6,89 @@ export const USER_ROLES = Object.freeze({
   VENDEUR: 'Vendeur',
 });
 
-/**
- * Clés utilisées pour le stockage local (localStorage).
- * Utiliser un préfixe permet d'éviter les collisions avec d'autres applications.
- */
 export const LOCAL_STORAGE_KEYS = Object.freeze({
   USER_INFO: 'erp:user_info',
+  ACCESS_TOKEN: 'erp:access_token',
   UI_THEME: 'erp:ui_theme',
 });
 
-/**
- * Points de terminaison (endpoints) de l'API.
- * Note : La base de l'URL (ex: http://localhost:5000/api/v1) est
- * définie dans le client Axios. Ceci ne contient que les chemins relatifs.
- */
 export const API_ENDPOINTS = Object.freeze({
-  // Authentification
+  // --- Auth & Users ---
   LOGIN: '/auth/login',
   REGISTER: '/auth/register',
   LOGOUT: '/auth/logout',
   REFRESH_TOKEN: '/auth/refresh-token',
   FORGOT_PASSWORD: '/auth/forgot-password',
-  RESET_PASSWORD: '/auth/reset-password', // :token sera ajouté
-
-  // Utilisateurs & Rôles
+  RESET_PASSWORD: '/auth/reset-password',
+  UPDATE_MY_PASSWORD: '/auth/update-my-password',
+  
   USERS: '/users',
-  ROLES: '/roles',
   USERS_ME: '/users/me',
   UPDATE_ME: '/users/updateMe',
+
+  ROLES: '/roles',
+  PERMISSIONS: '/roles/permissions',
   
-  // Tiers
+  // --- Commercial ---
   CLIENTS: '/clients',
   FOURNISSEURS: '/fournisseurs',
-
-  // Produits & Stock
   PRODUITS: '/produits',
-  CATEGORIES: '/produits/categories',
-  STOCK: '/stock',
-  
-  // Ventes
+  CATEGORIES: '/produits/categories/all',
+
+  // --- Ventes ---
+  VENTES: '/ventes',
   DEVIS: '/ventes/devis',
   COMMANDES: '/ventes/commandes',
   FACTURES: '/ventes/factures',
+  BON_LIVRAISONS: '/ventes/bon-livraisons',
+  
+  // --- ACHATS ---
+  ACHATS: '/achats',
+  FACTURES_ACHAT: '/achats/factures',
 
-  // Dashboard & Rapports
-  DASHBOARD_KPIS: '/dashboard/kpis',
+  // --- Stock ---
+  STOCK: '/stock',
+  DEPOTS: '/stock/depots',
+  INVENTAIRES: '/stock/inventaires',
+  MOUVEMENTS: '/stock/mouvements',
+  ALERTES: '/stock/alertes',
+
+  // --- Paiements ---
+  PAIEMENTS: '/paiements',
+  ENCAISSEMENTS: '/paiements/encaissements',
+  DECAISSEMENTS: '/paiements/decaissements',
+  ECHEANCIERS: '/paiements/echeanciers',
+  RELANCES: '/paiements/relances',
+  MOBILE_MONEY_INITIATE: '/paiements/mobile-money/initiate-wave',
+
+  // --- Comptabilité ---
+  COMPTABILITE: '/comptabilite',
+  PLAN_COMPTABLE: '/comptabilite/plan-comptable',
+  ECRITURES: '/comptabilite/ecritures',
+  GRAND_LIVRE: '/comptabilite/grand-livre',
+
+  // --- Rapports & Dashboard ---
+  DASHBOARD: '/dashboard',
+  RAPPORTS: '/dashboard/rapports',
+  RAPPORT_VENTES: '/dashboard/rapports/ventes',
+  RAPPORT_BALANCE: '/dashboard/rapports/balance-generale',
+  RAPPORT_BILAN: '/dashboard/rapports/bilan',
+  RAPPORT_TVA: '/dashboard/rapports/declaration-tva',
+  STATISTIQUES: '/statistiques', // Maintenu pour la compatibilité
+
+  // --- Système ---
+  PARAMETRES: '/system/parametres',
+  AUDIT_LOGS: '/system/audit-logs',
+  NOTIFICATIONS: '/system/notifications',
+  BACKUPS: '/system/backups',
 });
 
-/**
- * Constantes pour la configuration de l'interface utilisateur.
- */
 export const UI_SETTINGS = Object.freeze({
-  DEFAULT_DEBOUNCE_DELAY: 500, // ms
-  ITEMS_PER_PAGE: 10,
-  TOAST_DEFAULT_DURATION: 4000, // ms
+  DEFAULT_DEBOUNCE_DELAY: 500,
+  ITEMS_PER_PAGE: 15,
+  TOAST_DEFAULT_DURATION: 4000,
 });
 
-/**
- * Types d'événements pour les notifications (Toast).
- */
 export const TOAST_TYPES = Object.freeze({
   SUCCESS: 'success',
   ERROR: 'error',
@@ -85,14 +96,19 @@ export const TOAST_TYPES = Object.freeze({
   WARNING: 'warning',
 });
 
-/**
- * Noms des slices Redux pour une référence centralisée.
- */
 export const REDUX_SLICE_NAMES = Object.freeze({
   AUTH: 'auth',
   UI: 'ui',
   DASHBOARD: 'dashboard',
   CLIENTS: 'clients',
+  FOURNISSEURS: 'fournisseurs',
   PRODUITS: 'produits',
+  CATEGORIES: 'categories',
   FACTURES: 'factures',
+  PARAMETRES: 'parametres',
+  USERS: 'users',
+  ROLES: 'roles',
+  NOTIFICATIONS: 'notifications',
+  STOCK: 'stock',
+  COMPTABILITE: 'comptabilite',
 });

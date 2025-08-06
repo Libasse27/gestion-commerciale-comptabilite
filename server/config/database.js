@@ -1,82 +1,86 @@
+'use strict';
 // ==============================================================================
 //        MODULE DE CONNEXION À LA BASE DE DONNÉES MONGODB (AVEC MONGOOSE)
 //
-// Ce module assure une connexion robuste à MongoDB, avec gestion des erreurs,
-// arrêt propre et messages de logs explicites.
+// Fournit :
+// - Connexion robuste à MongoDB
+// - Gestion des erreurs et des événements
+// - Arrêt propre (graceful shutdown)
+// - Journalisation centralisée via Winston
 // ==============================================================================
 
 const mongoose = require('mongoose');
+const { logger } = require('../middleware/logger');
 
-// Options de connexion Mongoose
+// --- Options de connexion Mongoose ---
 const connectionOptions = {
-  maxPoolSize: 15,
-  serverSelectionTimeoutMS: 10000,
-  socketTimeoutMS: 60000,
-  family: 4,
+  maxPoolSize: 15, // Limite le nombre de connexions simultanées
+  serverSelectionTimeoutMS: 10000, // Timeout si le serveur ne répond pas
+  socketTimeoutMS: 60000, // Timeout sur les sockets inactifs
+  family: 4, // IPv4 uniquement pour éviter les erreurs DNS
 };
 
 /**
- * Connexion à la base de données MongoDB avec journalisation et gestion d’erreur.
+ * Établit une connexion à MongoDB.
  */
 const connectDB = async () => {
   const dbUri = process.env.MONGODB_URI;
 
   if (!dbUri) {
-    console.error('❌ ERREUR CRITIQUE: La variable MONGODB_URI est absente.');
+    logger.error('❌ ERREUR CRITIQUE : La variable d\'environnement MONGODB_URI est manquante.');
     process.exit(1);
   }
 
   try {
-    mongoose.set('strictQuery', true);
-    console.log('⏳ Connexion à MongoDB en cours...');
+    mongoose.set('strictQuery', true); // Évite les requêtes ambiguës
+    logger.info('📡 Tentative de connexion à MongoDB...');
     await mongoose.connect(dbUri, connectionOptions);
   } catch (err) {
-    console.error('🔥 Échec de la connexion initiale à MongoDB:', err.message);
+    logger.error(`❌ Échec initial de connexion à MongoDB : ${err.message}`, { error: err });
     process.exit(1);
   }
 };
 
-// Événements Mongoose pour logs
+// --- Événements de la connexion Mongoose ---
 mongoose.connection.on('connected', () => {
   const db = mongoose.connection;
-  console.log('====================================================');
-  console.log('✅ MONGODB CONNECTÉ');
-  console.log(`   - Hôte      : ${db.host}`);
-  console.log(`   - Port      : ${db.port}`);
-  console.log(`   - Database  : ${db.name}`);
-  console.log('====================================================');
+  logger.info('====================================================');
+  logger.info('✅ Connexion MongoDB établie avec succès');
+  logger.info(`   🔸 Hôte      : ${db.host}`);
+  logger.info(`   🔸 Port      : ${db.port}`);
+  logger.info(`   🔸 Base      : ${db.name}`);
+  logger.info('====================================================');
 });
 
 mongoose.connection.on('error', (err) => {
-  console.error('❗️ ERREUR MONGODB:', err.message);
+  logger.error('⚠️ Erreur de connexion MongoDB après connexion initiale', {
+    message: err.message,
+    stack: err.stack,
+  });
 });
 
 mongoose.connection.on('disconnected', () => {
-  console.warn('🔌 Déconnexion de MongoDB détectée.');
+  logger.warn('⚠️ Déconnexion détectée : MongoDB déconnecté.');
 });
 
-// Fermeture propre
+mongoose.connection.on('reconnected', () => {
+  logger.info('🔁 Reconnexion à MongoDB réussie.');
+});
+
+/**
+ * Ferme proprement la connexion MongoDB.
+ */
 const disconnectDB = async () => {
+  logger.info('🔌 Fermeture de la connexion MongoDB...');
   try {
     await mongoose.connection.close();
-    console.log('🛑 Connexion MongoDB fermée proprement.');
+    logger.info('✅ Connexion MongoDB fermée correctement.');
   } catch (err) {
-    console.error('❗️ Erreur lors de la fermeture MongoDB:', err);
+    logger.error('❌ Erreur lors de la fermeture de la connexion MongoDB', { error: err });
   }
 };
 
-// Arrêt propre sur signal
-process.on('SIGINT', async () => {
-  console.log('📴 SIGINT détecté : fermeture MongoDB...');
-  await disconnectDB();
-  process.exit(0);
-});
-
-// Gestion des erreurs non interceptées
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('🚨 PROMESSE NON INTERCEPTÉE:', reason);
-  // On pourrait ici envoyer une alerte ou loguer sur un service externe
-  disconnectDB().then(() => process.exit(1));
-});
-
-module.exports = { connectDB, disconnectDB };
+module.exports = {
+  connectDB,
+  disconnectDB,
+};

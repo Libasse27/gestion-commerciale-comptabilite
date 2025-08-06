@@ -1,36 +1,34 @@
+// client/src/pages/errors/NotFound.jsx
+// ==============================================================================
+//           Page d'Erreur 404 (Page Non Trouvée)
+//
+// Affiche un message clair à l'utilisateur lorsqu'il accède à une URL
+// qui ne correspond à aucune route définie dans l'application.
+// ==============================================================================
+
 import React from 'react';
 import { Link } from 'react-router-dom';
-import './NotFound.css';
+import { Container, Row, Col, Button } from 'react-bootstrap';
+import { SignpostSplit } from 'react-bootstrap-icons';
 
-// Importation d'une icône pertinente depuis une bibliothèque comme React Icons
-import { FiAlertTriangle } from 'react-icons/fi';
-
-const NotFound = () => {
+const NotFoundPage = () => {
   return (
-    <div className="not-found-container">
-      <div className="not-found-content">
-        <FiAlertTriangle className="not-found-icon" />
-        <h1 className="not-found-title">Erreur 404 | Page Introuvable</h1>
-        <p className="not-found-message">
-          Désolé, la page que vous cherchez n'a pas pu être trouvée. Il est possible que l'adresse ait été mal saisie ou que la page ait été déplacée.
-        </p>
-        <p className="not-found-suggestion">
-          Voici quelques liens qui pourraient vous être utiles :
-        </p>
-        <div className="not-found-links">
-          <Link to="/dashboard" className="not-found-link">
-            Retour au Tableau de Bord
-          </Link>
-          <Link to="/support" className="not-found-link">
-            Contacter le Support
-          </Link>
-          <Link to="/" className="not-found-link">
-            Page d'Accueil
-          </Link>
-        </div>
-      </div>
-    </div>
+    <Container>
+      <Row className="justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
+        <Col md={6} className="text-center">
+          <SignpostSplit className="text-primary mb-4" size={80} />
+          <h1 className="display-1 fw-bold">404</h1>
+          <h2 className="fw-bold">Page Non Trouvée</h2>
+          <p className="lead text-muted mb-4">
+            Désolé, la page que vous recherchez n'existe pas ou a été déplacée.
+          </p>
+          <Button as={Link} to="/" variant="primary" size="lg">
+            Retourner à l'accueil
+          </Button>
+        </Col>
+      </Row>
+    </Container>
   );
 };
 
-export default NotFound;
+export default NotFoundPage;

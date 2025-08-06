@@ -1,57 +1,58 @@
+// server/config/cloudinary.js
 // ==============================================================================
-//                  Configuration du Service Cloudinary
+//                  CONFIGURATION DU SERVICE CLOUDINARY
 //
-// Ce module configure et exporte le SDK Cloudinary. Il fournit des fonctions
-// utilitaires pour interagir avec le service, notamment pour le téléversement
-// (upload) et la suppression d'actifs.
+// Ce module configure et exporte des fonctions utilitaires pour interagir avec
+// le service de gestion d'actifs Cloudinary. Il gère l'upload et la suppression
+// de manière asynchrone et sécurisée.
 //
-// L'utilisation d'un service comme Cloudinary est la meilleure pratique pour
-// la production, car elle dissocie le stockage des fichiers de votre serveur
-// d'application, améliorant la scalabilité et la sécurité.
+// L'utilisation de Cloudinary est une best practice en production pour dissocier
+// le stockage des fichiers du serveur d'application.
 // ==============================================================================
 
-const cloudinary = require('cloudinary').v2;
+const { v2: cloudinary } = require('cloudinary');
 const streamifier = require('streamifier');
+const { logger } = require('../middleware/logger');
 
 // -- Configuration de Cloudinary --
-// Le SDK est configuré en utilisant les variables d'environnement.
-// Nous nous assurons qu'elles sont présentes au démarrage.
-if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-  console.error('❌ Erreur: Les variables d\'environnement Cloudinary (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET) ne sont pas définies.');
-  // Dans un cas réel, vous pourriez vouloir arrêter le serveur si Cloudinary est essentiel.
-  // process.exit(1);
+// On vérifie la présence des variables d'environnement critiques.
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+    secure: true, // Toujours utiliser HTTPS
+  });
+  logger.info('☁️  Service Cloudinary configuré et prêt.');
+} else {
+  logger.warn('CONFIG WARN: Les variables d\'environnement Cloudinary ne sont pas toutes définies. L\'upload via Cloudinary sera désactivé.');
 }
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true, // Toujours utiliser HTTPS pour les URLs générées
-});
 
 /**
- * Téléverse un fichier vers Cloudinary à partir d'un buffer en mémoire.
- * @param {Buffer} fileBuffer - Le buffer du fichier à téléverser (fourni par multer.memoryStorage).
- * @param {string} folder - Le nom du dossier de destination dans Cloudinary (ex: 'produits', 'avatars').
- * @returns {Promise<object>} Une promesse qui se résout avec le résultat de l'upload de Cloudinary.
+ * Téléverse un fichier vers Cloudinary à partir d'un buffer mémoire.
+ * @param {Buffer} fileBuffer - Le buffer du fichier (fourni par multer.memoryStorage).
+ * @param {string} folder - Le nom du dossier de destination dans Cloudinary (ex: 'produits').
+ * @returns {Promise<object>} Une promesse qui se résout avec le résultat de l'upload.
  */
 const uploadFromBuffer = (fileBuffer, folder) => {
   return new Promise((resolve, reject) => {
-    // Crée un flux d'upload vers Cloudinary
+    // Si la configuration est absente, on rejette immédiatement.
+    if (!cloudinary.config().cloud_name) {
+      return reject(new Error('Cloudinary n\'est pas configuré. Vérifiez les variables d\'environnement.'));
+    }
+    
     const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder: folder,
-        // resource_type: "auto" // Laisse Cloudinary deviner le type de ressource
-      },
+      { folder },
       (error, result) => {
         if (error) {
+          logger.error('Erreur lors de l\'upload sur Cloudinary', { error: error.message });
           return reject(error);
         }
         resolve(result);
       }
     );
 
-    // Crée un flux de lecture à partir du buffer et le pipe vers le flux d'upload
     streamifier.createReadStream(fileBuffer).pipe(uploadStream);
   });
 };
@@ -59,23 +60,27 @@ const uploadFromBuffer = (fileBuffer, folder) => {
 
 /**
  * Supprime un fichier de Cloudinary en utilisant son public_id.
- * @param {string} publicId - L'identifiant public du fichier à supprimer (ex: 'produits/abc123xyz').
+ * @param {string} publicId - L'ID public du fichier à supprimer.
  * @returns {Promise<object>} Une promesse qui se résout avec le résultat de la suppression.
  */
 const deleteFromCloudinary = (publicId) => {
   return new Promise((resolve, reject) => {
+    if (!cloudinary.config().cloud_name) {
+      return reject(new Error('Cloudinary n\'est pas configuré.'));
+    }
+
     cloudinary.uploader.destroy(publicId, (error, result) => {
       if (error) {
+        logger.error(`Échec de la suppression du fichier Cloudinary : ${publicId}`, { error: error.message });
         return reject(error);
       }
+      logger.info(`Fichier Cloudinary supprimé avec succès : ${publicId}`);
       resolve(result);
     });
   });
 };
 
-
 module.exports = {
-  cloudinary, // Exporte l'instance configurée si besoin
   uploadFromBuffer,
   deleteFromCloudinary,
 };

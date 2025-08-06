@@ -1,0 +1,19 @@
+<%# server/templates/email/notification.ejs %>
+<%# Ce template est injecté dans baseLayout.ejs %>
+
+<p>Bonjour <%= user.firstName %>,</p>
+
+<p>
+    <%= message %>
+</p>
+
+<% if (lien) { %>
+    <p style="text-align: center;">
+        <a href="<%= appUrl %><%= lien %>" class="button">Voir les détails</a>
+    </p>
+<% } %>
+
+<p>
+    Cordialement,<br>
+    L'équipe <%= appName || 'ERP Sénégal' %>
+</p>

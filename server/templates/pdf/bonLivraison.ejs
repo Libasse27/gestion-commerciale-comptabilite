@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Bon de Livraison N° <%= bonLivraison.numero %></title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #333; }
+        .invoice-wrapper { width: 210mm; height: 297mm; margin: auto; }
+        .invoice-box { max-width: 800px; margin: auto; padding: 30px; }
+        .header h1 { color: #000; margin-bottom: 5px; font-size: 24px; }
+        .company-details p, .invoice-details p, .client-details p { margin: 0; line-height: 1.6; }
+        .flex-container { display: flex; justify-content: space-between; margin-top: 40px; }
+        .invoice-table { width: 100%; line-height: inherit; text-align: left; border-collapse: collapse; margin-top: 30px; }
+        .invoice-table td, .invoice-table th { padding: 8px; vertical-align: top; }
+        .invoice-table thead th { background-color: #f2f2f2; border-bottom: 2px solid #ddd; text-align: left; }
+        .invoice-table tbody tr { border-bottom: 1px solid #eee; }
+        .invoice-table .align-right { text-align: right; }
+        .signature-section { margin-top: 80px; display: flex; justify-content: space-between; }
+        .signature-box { width: 45%; text-align: center; border-top: 1px solid #ccc; padding-top: 10px; }
+        .notes, .footer { margin-top: 40px; font-size: 11px; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="invoice-wrapper">
+        <div class="invoice-box">
+            <!-- En-tête -->
+            <table cellpadding="0" cellspacing="0" style="width: 100%;">
+                <tr>
+                    <td class="title" style="vertical-align: top;">
+                        <% if (entreprise.logo_url) { %>
+                            <img src="<%= entreprise.logo_url %>" alt="Logo" style="max-width: 150px; max-height: 80px;" />
+                        <% } else { %>
+                            <h2 style="margin:0;"><%= entreprise.nom %></h2>
+                        <% } %>
+                    </td>
+                    <td class="invoice-details" style="text-align: right;">
+                        <h1 style="margin:0;">BON DE LIVRAISON</h1>
+                        <p><strong>N° :</strong> <%= bonLivraison.numero %></p>
+                        <p><strong>Date de livraison :</strong> <%= formatDate(bonLivraison.dateLivraison) %></p>
+                        <p><strong>Réf. Commande :</strong> <%= commandeOrigine.numero %></p>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Informations de l'émetteur et du client -->
+            <div class="flex-container">
+                <div class="company-details">
+                    <p><strong>Expéditeur :</strong></p>
+                    <p><strong><%= entreprise.nom %></strong></p>
+                    <p><%- entreprise.adresse.replace(/\n/g, '<br>') %></p>
+                </div>
+                <div class="client-details" style="text-align: right;">
+                    <p><strong>Livré à :</strong></p>
+                    <p><strong><%= client.nom %></strong></p>
+                    <p><%- bonLivraison.adresseLivraison.replace(/\n/g, '<br>') %></p>
+                </div>
+            </div>
+
+            <!-- Tableau des lignes -->
+            <table class="invoice-table">
+                <thead>
+                    <tr>
+                        <th>Référence</th>
+                        <th>Description</th>
+                        <th class="align-right">Quantité Livrée</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% lignes.forEach(ligne => { %>
+                    <tr>
+                        <td><%= ligne.produit.reference %></td>
+                        <td><%= ligne.description %></td>
+                        <td class="align-right"><%= ligne.quantite %></td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+
+            <!-- Notes -->
+            <% if (bonLivraison.notes) { %>
+                <div class="notes">
+                    <p><strong>Notes :</strong><br><%= bonLivraison.notes %></p>
+                </div>
+            <% } %>
+
+            <!-- Section des signatures -->
+            <div class="signature-section">
+                <div class="signature-box">
+                    <p>Cachet et Signature de l'Expéditeur</p>
+                </div>
+                <div class="signature-box">
+                    <p>Cachet et Signature du Client</p>
+                    <p>(Bon pour réception)</p>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</body>
+</html>

@@ -1,103 +1,48 @@
-// ==============================================================================
-//           Service de Haut Niveau pour l'Envoi d'Emails
-//
-// Ce service encapsule la logique de préparation et d'envoi d'emails
-// transactionnels spécifiques à des actions métier.
-//
-// Il utilise des templates EJS pour générer le contenu HTML des emails,
-// rendant les messages facilement personnalisables.
-// ==============================================================================
-
 const path = require('path');
 const ejs = require('ejs');
 const { sendEmail } = require('../../config/email');
 const { logger } = require('../../middleware/logger');
-const { formatCurrency, formatDateFr } = require('../../utils/formatters');
+const { formatCurrency, formatDate } = require('../../utils/formatters');
 
-/**
- * Fonction privée pour rendre un template EJS en HTML.
- * @private
- */
-const _renderTemplate = async (templateName, data) => {
+async function _renderTemplate(templateName, data) {
   try {
     const templatePath = path.join(__dirname, `../../templates/email/${templateName}.ejs`);
-    let html = await ejs.renderFile(templatePath, data);
-    
-    // Injecte le HTML généré dans le layout de base
+    const templateData = { ...data, appUrl: process.env.APP_URL };
+    const body = await ejs.renderFile(templatePath, templateData);
     const layoutPath = path.join(__dirname, '../../templates/email/baseLayout.ejs');
-    html = await ejs.renderFile(layoutPath, { body: html });
-    
-    return html;
+    return ejs.renderFile(layoutPath, { body, ...templateData }); // Passer aussi les données au layout
   } catch (error) {
-    logger.error(`Erreur lors du rendu du template email '${templateName}'`, { error });
-    throw new Error('Impossible de générer le contenu de l\'email.');
+    logger.error(`Erreur lors du rendu du template email '${templateName}'`, { error: error.message });
+    throw new Error("Impossible de générer le contenu de l'email.");
   }
-};
+}
 
-
-/**
- * Envoie un email de bienvenue à un nouvel utilisateur.
- * @param {object} user - L'objet utilisateur.
- */
 async function sendWelcomeEmail(user) {
-    const subject = `Bienvenue chez ERP Sénégal, ${user.firstName} !`;
-    const html = await _renderTemplate('welcome', { user }); // Suppose un template welcome.ejs
-    
-    await sendEmail({
-        to: user.email,
-        subject,
-        html,
-    });
+    const subject = `Bienvenue chez ${process.env.APP_NAME || 'ERP Sénégal'} !`;
+    const html = await _renderTemplate('welcome', { user });
+    await sendEmail({ to: user.email, subject, html });
 }
 
-
-/**
- * Envoie un email de relance pour une facture impayée.
- * @param {object} facture - Le document Mongoose de la facture.
- * @param {object} client - Le document Mongoose du client.
- */
-async function sendRelanceFacture(facture, client) {
-    const subject = `Rappel amical concernant votre facture N°${facture.numero}`;
-    
-    // Préparer les données pour le template
+async function sendRelanceFacture(facture, client, niveauRelance) {
+    const subject = `Relance ${niveauRelance} - Facture N°${facture.numero} impayée`;
     const templateData = {
-        facture,
-        client,
+        facture, client, niveauRelance,
         totalTTC: formatCurrency(facture.totalTTC),
-        dateEcheance: formatDateFr(facture.dateEcheance)
+        dateEcheance: formatDate(facture.dateEcheance)
     };
-    
     const html = await _renderTemplate('relanceFacture', templateData);
-
-    await sendEmail({
-        to: client.email,
-        subject,
-        html,
-    });
-    
-    logger.info(`Email de relance envoyé pour la facture ${facture.numero} à ${client.email}.`);
+    await sendEmail({ to: client.email, subject, html });
+    logger.info(`Email de relance (niveau ${niveauRelance}) envoyé pour la facture ${facture.numero}.`);
 }
 
-
-/**
- * Envoie une notification par email (ex: stock bas).
- * @param {object} user - L'utilisateur destinataire.
- * @param {string} subject - Le sujet de la notification.
- * @param {string} message - Le message à afficher.
- */
-async function sendNotificationEmail(user, subject, message) {
-    const html = await _renderTemplate('notification', { user, message }); // Suppose un template notification.ejs
-
-    await sendEmail({
-        to: user.email,
-        subject,
-        html,
-    });
+async function sendNouvelleFacture(facture, client) {
+    const subject = `Votre nouvelle facture N°${facture.numero}`;
+    const html = await _renderTemplate('nouvelleFacture', { facture, client, totalTTC: formatCurrency(facture.totalTTC) });
+    await sendEmail({ to: client.email, subject, html });
 }
-
 
 module.exports = {
   sendWelcomeEmail,
   sendRelanceFacture,
-  sendNotificationEmail,
+  sendNouvelleFacture,
 };

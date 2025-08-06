@@ -1,105 +1,67 @@
+// server/controllers/comptabilite/rapportController.js
 // ==============================================================================
-//           Contrôleur pour les Rapports Comptables et Financiers
+//           Contrôleur pour les Rapports Comptables
 //
-// Ce contrôleur gère les requêtes HTTP pour la génération des états financiers
-// essentiels comme la Balance, le Compte de Résultat et le Bilan.
+// Ce contrôleur gère les requêtes HTTP pour la génération de rapports
+// financiers complexes comme la Balance, le Bilan, et le Compte de Résultat.
 //
-// Il délègue toute la logique de calcul complexe aux services spécialisés.
+// Il délègue toute la logique de calcul aux services spécialisés.
 // ==============================================================================
 
 const balanceService = require('../../services/comptabilite/balanceService');
 const bilanService = require('../../services/comptabilite/bilanService');
-// const resultatService = require('../../services/comptabilite/resultatService'); // Service futur
-const fiscalService = require('../../services/comptabilite/fiscalService');
-const AppError = require('../../utils/appError');
+// const resultatService = require('../../services/comptabilite/resultatService'); // Futur
 const asyncHandler = require('../../utils/asyncHandler');
+const AppError = require('../../utils/appError');
 
 /**
- * @desc    Générer la balance comptable générale
- * @route   GET /api/v1/rapports/balance-generale?dateDebut=...&dateFin=...
+ * @desc    Générer une Balance Générale pour une période
+ * @route   GET /api/v1/comptabilite/rapports/balance
  * @access  Privé (permission: 'read:comptabilite')
  */
-exports.getBalanceGenerale = asyncHandler(async (req, res, next) => {
-  const { dateDebut, dateFin, inclureComptesNonMouvementes } = req.query;
+exports.genererBalance = asyncHandler(async (req, res, next) => {
+    const { dateDebut, dateFin } = req.query;
+    if (!dateDebut || !dateFin) {
+        return next(new AppError('Veuillez fournir une date de début et une date de fin.', 400));
+    }
 
-  if (!dateDebut || !dateFin) {
-      return next(new AppError('Veuillez fournir une date de début et une date de fin.', 400));
-  }
-
-  const balance = await balanceService.genererBalanceGenerale({
-    dateDebut,
-    dateFin,
-    inclureComptesNonMouvementes: inclureComptesNonMouvementes !== 'false',
-  });
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      balance,
-    },
-  });
+    const balanceData = await balanceService.genererBalanceGenerale({ dateDebut, dateFin });
+    
+    res.status(200).json({
+        status: 'success',
+        data: balanceData,
+    });
 });
 
 
 /**
  * @desc    Générer le Bilan à une date donnée
- * @route   GET /api/v1/rapports/bilan?dateFin=...
+ * @route   GET /api/v1/comptabilite/rapports/bilan
  * @access  Privé (permission: 'read:comptabilite')
  */
-exports.getBilan = asyncHandler(async (req, res, next) => {
+exports.genererBilan = asyncHandler(async (req, res, next) => {
     const { dateFin } = req.query;
     if (!dateFin) {
         return next(new AppError('Veuillez fournir une date de fin pour le bilan.', 400));
     }
 
-    const bilan = await bilanService.genererBilan(dateFin);
+    const bilanData = await bilanService.genererBilan(dateFin);
 
     res.status(200).json({
         status: 'success',
-        data: {
-            bilan,
-        }
+        data: bilanData,
     });
 });
 
 
 /**
  * @desc    Générer le Compte de Résultat pour une période
- * @route   GET /api/v1/rapports/compte-resultat?dateDebut=...&dateFin=...
+ * @route   GET /api/v1/comptabilite/rapports/compte-de-resultat
  * @access  Privé (permission: 'read:comptabilite')
  */
-exports.getCompteDeResultat = asyncHandler(async (req, res, next) => {
-    // TODO: Implémenter le `resultatService.genererCompteDeResultat`
-    // Cette fonction sera très similaire à la fonction privée `_calculerResultatExercice`
-    // que nous avons mise dans `bilanService`.
-    
-    res.status(200).json({
-        status: 'in_progress',
-        message: 'Endpoint pour le Compte de Résultat à implémenter.'
-    });
-});
-
-
-/**
- * @desc    Préparer la déclaration de TVA pour une période
- * @route   GET /api/v1/rapports/declaration-tva?annee=...&mois=...
- * @access  Privé (permission: 'manage:comptabilite') // Souvent réservé aux comptables
- */
-exports.getDeclarationTVA = asyncHandler(async (req, res, next) => {
-    const { annee, mois } = req.query;
-    if (!annee || !mois) {
-        return next(new AppError('Veuillez fournir une année et un mois.', 400));
-    }
-
-    const declarationData = await fiscalService.calculerDeclarationTVA({
-        annee: parseInt(annee),
-        mois: parseInt(mois),
-    });
-
-    res.status(200).json({
-        status: 'success',
-        data: {
-            declarationTVA: declarationData,
-        }
-    });
+exports.genererCompteDeResultat = asyncHandler(async (req, res, next) => {
+    // TODO: Implémenter le service `resultatService.js`
+    // const { dateDebut, dateFin } = req.query;
+    // ...
+    res.status(501).json({ status: 'fail', message: 'Cette fonctionnalité n\'est pas encore implémentée.' });
 });

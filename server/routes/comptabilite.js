@@ -1,57 +1,23 @@
-// ==============================================================================
-//           Routeur pour le Module Comptabilité (/api/v1/comptabilite)
-//
-// MISE À JOUR : Ce routeur gère maintenant les routes de haut niveau pour la
-// comptabilité et "monte" le sous-routeur `ecritureRoutes` sur le chemin
-// `/ecritures` pour une meilleure organisation.
-// ==============================================================================
-
+// server/routes/comptabilite.js
 const express = require('express');
+const { protect } = require('../middleware/auth');
 
-// --- Importation des Contrôleurs et Middlewares ---
+// Importer les sous-routeurs
+const planRoutes = require('./comptabilite/plan');
+const ecrituresRoutes = require('./comptabilite/ecritures');
+const rapportsRoutes = require('./comptabilite/rapports');
 const comptaController = require('../controllers/comptabilite/comptabiliteController');
-const authMiddleware = require('../middleware/auth');
 const { checkPermission } = require('../middleware/permissions');
 
-// 1. Importer le nouveau sous-routeur pour les écritures
-const ecritureRoutes = require('./ecritures');
-
-// --- Initialisation du Routeur ---
 const router = express.Router();
+router.use(protect); // Sécuriser toutes les routes comptables
 
+// Brancher les sous-routeurs
+router.use('/plan-comptable', planRoutes);
+router.use('/ecritures', ecrituresRoutes);
+router.use('/rapports', rapportsRoutes);
 
-// --- Application du Middleware d'Authentification ---
-// L'authentification est requise pour tout le module de comptabilité.
-router.use(authMiddleware);
+// Route pour le grand livre (qui est une consultation spécifique)
+router.get('/grand-livre/:compteId', checkPermission('comptabilite:read'), comptaController.getGrandLivreCompte);
 
-
-// --- Routes de "Haut Niveau" gérées par ce routeur ---
-
-// Routes pour le Plan Comptable
-router.route('/plan-comptable')
-  .get(
-    checkPermission('read:comptabilite'),
-    comptaController.getPlanComptable
-  )
-  .post(
-    checkPermission('manage:comptabilite'),
-    comptaController.createCompteComptable
-  );
-
-// Route pour la Consultation du Grand Livre
-router.get(
-  '/grand-livre/:compteId',
-  checkPermission('read:comptabilite'),
-  comptaController.getGrandLivreCompte
-);
-
-
-// --- Montage du Sous-Routeur pour les Écritures ---
-// Toutes les routes définies dans `ecritureRoutes` seront maintenant
-// préfixées par `/ecritures`.
-// Ex: GET / deviendra GET /api/v1/comptabilite/ecritures
-router.use('/ecritures', ecritureRoutes);
-
-
-// --- Exportation du Routeur ---
 module.exports = router;

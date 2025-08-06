@@ -1,20 +1,20 @@
+// server/models/commercial/BonLivraison.js
 // ==============================================================================
 //                Modèle Mongoose pour les Bons de Livraison (BL)
-//
-// MISE À JOUR : Utilise maintenant le `numerotationService` pour générer
-// automatiquement le `numero` du Bon de Livraison.
 // ==============================================================================
 
 const mongoose = require('mongoose');
 const { DOCUMENT_STATUS } = require('../../utils/constants');
 const ligneDocumentSchema = require('../schemas/ligneDocumentSchema');
-const numerotationService = require('../../services/system/numerotationService'); // Import du service
+const numerotationService = require('../../services/system/numerotationService');
 
 const bonLivraisonSchema = new mongoose.Schema(
   {
     numero: {
       type: String,
       unique: true,
+      trim: true,
+      uppercase: true,
     },
     client: {
       type: mongoose.Schema.Types.ObjectId,
@@ -32,6 +32,7 @@ const bonLivraisonSchema = new mongoose.Schema(
     adresseLivraison: {
       type: String,
       trim: true,
+      required: [true, "L'adresse de livraison est obligatoire."],
     },
     statut: {
       type: String,
@@ -44,10 +45,12 @@ const bonLivraisonSchema = new mongoose.Schema(
       required: true,
     },
     factureAssociee: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Facture',
-        default: null,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Facture',
+      default: null,
     },
+    transporteur: { type: String, trim: true },
+    notes: { type: String, trim: true },
     creePar: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -65,8 +68,7 @@ const bonLivraisonSchema = new mongoose.Schema(
 bonLivraisonSchema.pre('save', async function(next) {
   if (this.isNew && !this.numero) {
     try {
-      // Appel au service de numérotation pour le type 'bonLivraison'
-      this.numero = await numerotationService.getNextNumero('bonLivraison');
+      this.numero = await numerotationService.getNextNumero('bon_livraison');
     } catch (error) {
       return next(error);
     }
@@ -74,7 +76,10 @@ bonLivraisonSchema.pre('save', async function(next) {
   next();
 });
 
+bonLivraisonSchema.index({ client: 1 });
+bonLivraisonSchema.index({ commandeOrigine: 1 });
+bonLivraisonSchema.index({ dateLivraison: -1 });
 
-const BonLivraison = mongoose.model('BonLivraison', bonLivraisonSchema);
+const BonLivraison = mongoose.models.BonLivraison || mongoose.model('BonLivraison', bonLivraisonSchema);
 
 module.exports = BonLivraison;

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= subject %></title>
+    <style>
+        /* Styles CSS "inlinés" pour une compatibilité maximale avec les clients email */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-color: #f4f4f7;
+            color: #333333;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .header {
+            background-color: #4a90e2; /* Bleu institutionnel */
+            color: #ffffff;
+            padding: 24px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .logo {
+            max-height: 60px;
+            margin-bottom: 15px;
+        }
+        .content {
+            padding: 24px;
+            line-height: 1.6;
+            font-size: 16px;
+        }
+        .footer {
+            background-color: #f4f4f7;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #777777;
+        }
+        .footer a {
+            color: #4a90e2;
+            text-decoration: none;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4a90e2;
+            color: #ffffff;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <table width="100%" border="0" cellspacing="0" cellpadding="20" style="background-color: #f4f4f7;">
+        <tr>
+            <td>
+                <table class="container" width="100%" border="0" cellspacing="0" cellpadding="0" align="center">
+                    <!-- Header -->
+                    <tr>
+                        <td class="header">
+                            <% if (entreprise && entreprise.logo_url) { %>
+                                <img src="<%= entreprise.logo_url %>" alt="Logo" class="logo">
+                            <% } %>
+                            <h1><%= entreprise.nom || 'Votre Entreprise' %></h1>
+                        </td>
+                    </tr>
+                    <!-- Contenu Spécifique de l'Email -->
+                    <tr>
+                        <td class="content">
+                            <%- body %> <!-- C'est ici que le contenu de chaque email sera injecté -->
+                        </td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                        <td class="footer">
+                            <p>
+                                <%= entreprise.nom || 'Votre Entreprise' %><br>
+                                <%= entreprise.adresse || 'Votre Adresse, Dakar, Sénégal' %><br>
+                                <a href="mailto:<%= entreprise.email || '#' %>"><%= entreprise.email || 'contact@votre-entreprise.sn' %></a> | <a href="<%= entreprise.siteWeb || '#' %>">Site Web</a>
+                            </p>
+                            <p>Cet email est envoyé automatiquement, merci de ne pas y répondre.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<%# server/templates/email/relanceFacture.ejs %>
+<%# Ce template est injecté dans baseLayout.ejs %>
+
+<p>Bonjour <%= client.nom %>,</p>
+
+<p>
+    Sauf erreur de notre part, nous n'avons pas encore reçu le règlement de la facture détaillée ci-dessous.
+</p>
+
+<div style="border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+    <h3 style="margin-top: 0;">Détails de la facture</h3>
+    <p>
+        <strong>Numéro de facture :</strong> <%= facture.numero %><br>
+        <strong>Date d'émission :</strong> <%= formatDate(facture.dateEmission) %><br>
+        <strong>Date d'échéance :</strong> <strong style="color: #d9534f;"><%= formatDate(facture.dateEcheance) %></strong><br>
+        <strong>Montant total :</strong> <strong style="font-size: 18px;"><%= formatCurrency(facture.totalTTC) %></strong><br>
+        <strong>Solde restant dû :</strong> <strong style="font-size: 18px; color: #d9534f;"><%= formatCurrency(facture.soldeDu) %></strong>
+    </p>
+</div>
+
+<p>
+    Nous vous serions reconnaissants de bien vouloir procéder au règlement dans les meilleurs délais. Si vous avez déjà effectué le paiement, veuillez ne pas tenir compte de ce rappel.
+</p>
+
+<p style="text-align: center;">
+    <%# Lien optionnel vers un portail client pour voir/payer la facture %>
+    <% if (appUrl) { %>
+        <a href="<%= appUrl %>/portal/invoices/<%= facture._id %>" class="button">Voir la facture en ligne</a>
+    <% } %>
+</p>
+
+<p>
+    Pour toute question concernant cette facture, n'hésitez pas à nous contacter.
+</p>
+
+<p>
+    Cordialement,<br>
+    Le service comptable de <%= entreprise.nom || 'notre entreprise' %>
+</p>

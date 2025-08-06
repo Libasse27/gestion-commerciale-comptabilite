@@ -1,3 +1,4 @@
+// server/models/auth/Role.js
 // ==============================================================================
 //                Modèle Mongoose pour les Rôles Utilisateur
 //
@@ -42,30 +43,21 @@ const roleSchema = new mongoose.Schema(
 
     /**
      * Un tableau de références vers les documents 'Permission'.
+     * C'est ce qui définit ce que le rôle a le droit de faire.
      */
     permissions: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Permission', // Fait le lien avec le modèle Permission
+        ref: 'Permission',
       },
     ],
   },
   {
-    /**
-     * Options du schéma :
-     * - timestamps: ajoute automatiquement les champs `createdAt` et `updatedAt`.
-     */
     timestamps: true,
-    collection: 'auth_roles', // Nom explicite pour la collection dans la DB
+    collection: 'auth_roles',
   }
 );
 
-/**
- * ✅ MISE À JOUR APPLIQUÉE
- * On vérifie si le modèle 'Role' a déjà été compilé avant de le créer.
- * Cette protection est indispensable pour éviter les erreurs lors du rechargement
- * à chaud du serveur en mode développement.
- */
 const Role = mongoose.models.Role || mongoose.model('Role', roleSchema);
 
 module.exports = Role;

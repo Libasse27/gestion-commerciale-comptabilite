@@ -1,45 +1,51 @@
-// ==============================================================================
-//           Composant Graphique Linéaire (LineChart)
-//
-// MISE À JOUR : Ajout du plugin 'Filler' pour permettre le remplissage de
-// couleur sous la courbe du graphique (option `fill: true`).
-// ==============================================================================
-
+// client/src/components/charts/LineChart.jsx
 import React from 'react';
 import { Line } from 'react-chartjs-2';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler, // <-- 1. Importer le plugin 'Filler'
+  Chart as ChartJS, CategoryScale, LinearScale, PointElement,
+  LineElement, Title, Tooltip, Legend, Filler,
 } from 'chart.js';
+import { formatCurrency } from '../../utils/formatters';
 
-// --- Enregistrement des composants Chart.js ---
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler // <-- 2. Enregistrer le plugin ici
+  CategoryScale, LinearScale, PointElement, LineElement,
+  Title, Tooltip, Legend, Filler
 );
 
-
 const LineChart = ({ data, options }) => {
-  // ... (le reste du composant est inchangé)
   const defaultOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { /* ... */ },
-    scales: { /* ... */ }
+    plugins: {
+      legend: { position: 'top' },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          label: (context) => {
+            let label = context.dataset.label || '';
+            if (label) label += ': ';
+            if (context.parsed.y !== null) {
+              label += formatCurrency(context.parsed.y);
+            }
+            return label;
+          }
+        }
+      },
+    },
+    scales: {
+      y: {
+        ticks: {
+          callback: (value) => {
+            // Formatter en k (kilo) ou M (million)
+            return new Intl.NumberFormat('fr-FR', { notation: 'compact', compactDisplay: 'short' }).format(value);
+          }
+        }
+      }
+    },
+    elements: { line: { tension: 0.3 } },
   };
+
   const chartOptions = { ...defaultOptions, ...options };
 
   return <Line options={chartOptions} data={data} />;

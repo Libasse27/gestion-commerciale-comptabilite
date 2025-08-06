@@ -10,6 +10,7 @@
 
 /**
  * Rôles des utilisateurs pour le contrôle d'accès (RBAC)
+ * Object.freeze empêche la modification accidentelle de l'objet.
  */
 const USER_ROLES = Object.freeze({
   ADMIN: 'Admin',
@@ -128,14 +129,6 @@ const EMAIL_TEMPLATES = Object.freeze({
   DEVIS_ENVOYE: 'devis_envoye',
 });
 
-/**
- * Formats de dates standards utilisés dans l'application
- */
-const DATE_FORMATS = Object.freeze({
-  SHORT: 'DD/MM/YYYY',
-  LONG: 'DD/MM/YYYY HH:mm',
-});
-
 module.exports = {
   USER_ROLES,
   DOCUMENT_STATUS,
@@ -147,5 +140,4 @@ module.exports = {
   AUDIT_LOG_ACTIONS,
   CACHE_TTL,
   EMAIL_TEMPLATES,
-  DATE_FORMATS,
 };

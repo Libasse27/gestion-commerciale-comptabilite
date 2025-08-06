@@ -1,13 +1,15 @@
 // ==============================================================================
-//                Fichier de Configuration pour Vite (Version Corrigée)
+//                Fichier de Configuration pour Vite
 //
 // Ce fichier permet de personnaliser le comportement de Vite, l'outil de build
 // et de serveur de développement pour notre application React.
 //
-// CORRECTION CLÉ :
-// Ajout de l'option `build.target` pour assurer la compatibilité du code
-// JavaScript généré avec une plus large gamme de navigateurs, ce qui résout
-// les erreurs de syntaxe (SyntaxError).
+// Il configure notamment :
+//   - Le port du serveur de développement.
+//   - Un proxy pour rediriger les appels API vers le backend et éviter les
+//     problèmes de CORS en développement.
+//   - Le dossier de sortie pour le build de production.
+//   - La compatibilité du code JavaScript final pour les navigateurs.
 // ==============================================================================
 
 import { defineConfig, loadEnv } from 'vite';
@@ -15,46 +17,52 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Charge les variables d'environnement du fichier .env situé dans le
-  // répertoire de travail actuel (process.cwd()), qui est /client.
+  // Charge les variables d'environnement du fichier .env correspondant au mode
+  // (development, production) depuis le répertoire de travail actuel (`client/`).
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
     // --- Plugins ---
     plugins: [
-      react(), // Plugin officiel pour le support de React
+      react(), // Plugin officiel pour le support de React (JSX, Fast Refresh, etc.)
     ],
 
-    // --- Configuration du Serveur de Développement ---
+    // --- Configuration du Serveur de Développement (`npm run dev`) ---
     server: {
-      port: 3000,
-      open: false,
+      port: 3000, // Le port sur lequel le client va s'exécuter
+      open: false, // Ne pas ouvrir automatiquement le navigateur
+      
+      // Configuration du proxy
       proxy: {
+        // Toute requête commençant par '/api' sera redirigée.
         '/api': {
+          // La cible de la redirection est lue depuis la variable d'environnement,
+          // avec une valeur par défaut pour la robustesse.
           target: env.VITE_PROXY_TARGET || 'http://localhost:5000',
+          // `changeOrigin` est nécessaire pour que le serveur backend
+          // pense que la requête vient de la même origine.
           changeOrigin: true,
-          secure: false,
+          secure: false, // Accepte les certificats auto-signés en développement
         },
       },
     },
 
-    // --- Configuration du Processus de Build ---
+    // --- Configuration du Processus de Build (`npm run build`) ---
     build: {
-      outDir: 'build',
-      sourcemap: true,
+      outDir: 'build', // Le dossier où les fichiers de production seront générés
+      sourcemap: true, // Générer des sourcemaps pour faciliter le débogage en production
       
-      // --- CORRECTION AJOUTÉE ICI ---
-      // Cette option indique à Vite de "transpiler" (traduire) le code final
-      // en une version de JavaScript compatible avec tous les navigateurs
-      // depuis 2015. Cela garantit que les syntaxes modernes comme le
-      // "optional chaining" (`?.`) sont converties en code plus ancien,
-      // ce qui élimine les "SyntaxError".
+      // Cette option garantit la compatibilité du code final avec une
+      // large gamme de navigateurs (tous ceux supportant ES2015+),
+      // en transpilant les syntaxes les plus modernes.
       target: 'es2015',
     },
     
-    // --- Configuration du Serveur de Prévisualisation ---
+    // --- Configuration du Serveur de Prévisualisation (`npm run preview`) ---
+    // Permet de tester le build de production localement.
     preview: {
       port: 3001,
+      open: true,
     }
   };
 });

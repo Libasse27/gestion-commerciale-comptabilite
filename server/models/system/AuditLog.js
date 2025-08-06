@@ -1,12 +1,13 @@
+// server/models/system/AuditLog.js
 // ==============================================================================
 //           Modèle Mongoose pour le Journal d'Audit
 //
 // Ce modèle enregistre les actions importantes effectuées par les utilisateurs
-// dans l'application à des fins de sécurité, de traçabilité et d'audit.
+// à des fins de sécurité et de traçabilité.
 //
-// Il est conçu pour être une piste d'audit fiable, enregistrant qui a
-// effectué une action, quelle était l'action, sur quelle ressource,
-// et quel était le résultat.
+// OPTIMISATION : Ce schéma est configuré pour utiliser une "Capped Collection"
+// afin de gérer automatiquement la taille des logs et de garantir des
+// performances d'écriture élevées.
 // ==============================================================================
 
 const mongoose = require('mongoose');
@@ -16,7 +17,7 @@ const auditLogSchema = new mongoose.Schema(
   {
     /**
      * L'utilisateur qui a effectué l'action.
-     * Peut être null pour les actions système (ex: tentative de connexion échouée).
+     * Peut être null pour les actions système.
      */
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -26,7 +27,6 @@ const auditLogSchema = new mongoose.Schema(
     
     /**
      * Le type d'action effectuée.
-     * Utilise une énumération pour la cohérence des données.
      */
     action: {
         type: String,
@@ -67,30 +67,29 @@ const auditLogSchema = new mongoose.Schema(
     },
 
     /**
-     * Un champ pour stocker des détails supplémentaires.
-     * Pour une action 'UPDATE', on pourrait stocker ici les changements
-     * (avant/après) sous forme de JSON. Pour une erreur, le message d'erreur.
+     * Un champ pour stocker des détails supplémentaires (différences de données, message d'erreur).
      */
     details: {
       type: mongoose.Schema.Types.Mixed,
     },
   },
   {
-    timestamps: { createdAt: true, updatedAt: false }, // Seul `createdAt` est pertinent
+    // --- Configuration pour une Capped Collection ---
+    // `capped` définit la taille maximale de la collection en octets (bytes).
+    // Ici, environ 50 Mo. Lorsque cette taille est atteinte, les plus anciens
+    // documents sont automatiquement supprimés.
+    capped: { size: 52428800, max: 50000 },
+    
+    timestamps: { createdAt: true, updatedAt: false },
     collection: 'system_auditlogs',
   }
 );
-
 
 // Index pour accélérer la recherche par utilisateur, action ou entité
 auditLogSchema.index({ user: 1, createdAt: -1 });
 auditLogSchema.index({ entity: 1, entityId: 1, createdAt: -1 });
 
 
-/**
- * On vérifie si le modèle a déjà été compilé avant de le créer pour éviter
- * les erreurs lors du rechargement à chaud en développement.
- */
 const AuditLog = mongoose.models.AuditLog || mongoose.model('AuditLog', auditLogSchema);
 
 module.exports = AuditLog;

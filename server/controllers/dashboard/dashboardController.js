@@ -1,64 +1,44 @@
-// ==============================================================================
-//           Contrôleur pour les Données des Tableaux de Bord
-//
-// MISE À JOUR : Appelle maintenant les services directement au lieu d'autres
-// contrôleurs, ce qui est une meilleure pratique d'architecture.
-// ==============================================================================
-
-// --- Import des Services ---
-const statistiquesService = require('../../services/statistiquesService');
+// server/controllers/dashboard/dashboardController.js
+const statistiquesService = require('../../services/statistiques/statistiquesService');
 const tresorerieService = require('../../services/paiements/tresorerieService');
-
-// --- Import des Modèles (pour les requêtes simples) ---
 const Facture = require('../../models/commercial/Facture');
 const asyncHandler = require('../../utils/asyncHandler');
-const { getStartOfDay, getEndOfDay } = require('../../utils/dateUtils');
+const { startOfDay, endOfDay, subDays } = require('date-fns');
+const { DOCUMENT_STATUS } = require('../../utils/constants');
 
 /**
- * @desc    Récupérer toutes les données pour le tableau de bord principal
- * @route   GET /api/v1/dashboard/main
- * @access  Privé
+ * @desc    Récupérer toutes les données agrégées pour le tableau de bord principal.
+ * @route   GET /api/v1/dashboard
  */
 exports.getMainDashboardData = asyncHandler(async (req, res, next) => {
-  // --- Utiliser Promise.all pour lancer toutes les requêtes en parallèle ---
-  const todayStart = getStartOfDay(new Date());
-  const todayEnd = getEndOfDay(new Date());
+  // Période par défaut pour les KPIs : 30 derniers jours
+  const dateFin = endOfDay(new Date());
+  const dateDebut = startOfDay(subDays(dateFin, 29));
 
-  // 1. KPIs Commerciaux (via le service)
-  const kpisPromise = statistiquesService.getKpisCommerciaux(todayStart, todayEnd);
-
-  // 2. Prévisionnel de trésorerie à 30 jours (via le service)
-  const previsionnelPromise = tresorerieService.getPrevisionnelTresorerie(30);
-
-  // 3. 5 dernières factures en retard (requête simple, peut rester ici)
-  const facturesEnRetardPromise = Facture.find({ statut: 'en_retard' })
-    .sort({ dateEcheance: 1 })
-    .limit(5)
-    .populate('client', 'nom');
-    
-  // 4. Données du graphique des ventes annuelles (via le service)
-  const ventesAnnuellesPromise = statistiquesService.getVentesAnnuelles();
-
-  // --- Attendre que toutes les promesses soient résolues ---
+  // Lancement des promesses en parallèle
   const [
-    kpis,
-    previsionnel,
+    kpisCommerciaux,
+    previsionnelTresorerie,
     dernieresFacturesEnRetard,
-    ventesAnnuelles,
+    salesChartData,
   ] = await Promise.all([
-    kpisPromise,
-    previsionnelPromise,
-    facturesEnRetardPromise,
-    ventesAnnuellesPromise,
+    statistiquesService.getKpisCommerciaux({ dateDebut, dateFin }),
+    tresorerieService.getPrevisionnelTresorerie(30),
+    Facture.find({ statut: DOCUMENT_STATUS.EN_RETARD })
+      .sort({ dateEcheance: 1 })
+      .limit(5)
+      .populate('client', 'nom')
+      .lean(),
+    statistiquesService.getVentesAnnuelles(),
   ]);
 
   res.status(200).json({
     status: 'success',
     data: {
-      kpis,
-      previsionnelTresorerie: previsionnel,
-      dernieresFacturesEnRetard,
-      ventesAnnuelles,
+      kpis: kpisCommerciaux,
+      previsionnel: previsionnelTresorerie,
+      facturesEnRetard: dernieresFacturesEnRetard,
+      ventesAnnuelles: salesChartData,
     },
   });
 });

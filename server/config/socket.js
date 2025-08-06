@@ -11,10 +11,11 @@
 // ==============================================================================
 
 const { Server } = require('socket.io');
-const { verifyAccessToken } = require('./jwt'); // Notre utilitaire JWT
-const User = require('../models/auth/User');     // Le modèle User pour vérifier l'existence
+const { logger } = require('../middleware/logger');
+const { verifyAccessToken } = require('./jwt');
+const User = require('../models/auth/User');
 
-let io; // Instance de Socket.IO qui sera partagée à travers l'application
+let io;
 
 /**
  * Initialise le serveur Socket.IO et l'attache au serveur HTTP.
@@ -23,61 +24,53 @@ let io; // Instance de Socket.IO qui sera partagée à travers l'application
 const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.CORS_ORIGIN, // Autorise uniquement le client React
+      origin: process.env.CORS_ORIGIN,
       methods: ['GET', 'POST'],
     },
+    pingTimeout: 30000, // ⏱ Déconnecte après 30s sans réponse
+    pingInterval: 10000, // ⏱ Ping toutes les 10s
   });
 
   // --- Middleware d'Authentification pour Socket.IO ---
-  // S'exécute pour chaque nouvelle tentative de connexion WebSocket.
   io.use(async (socket, next) => {
     try {
-      // Le token JWT doit être envoyé par le client dans le paquet d'authentification
       const token = socket.handshake.auth.token;
-
       if (!token) {
         return next(new Error('Authentication error: Token manquant.'));
       }
 
-      // On utilise notre utilitaire pour vérifier le token
       const decoded = verifyAccessToken(token);
       if (!decoded || !decoded.id) {
         return next(new Error('Authentication error: Token invalide ou expiré.'));
       }
 
-      // Vérifier que l'utilisateur existe toujours et n'est pas inactif
       const user = await User.findById(decoded.id).select('firstName lastName email isActive');
       if (!user || !user.isActive) {
         return next(new Error('Authentication error: Utilisateur non trouvé ou inactif.'));
       }
 
-      // Attacher les informations de l'utilisateur à l'objet socket pour un usage ultérieur
-      socket.user = user;
+      socket.user = user; // ✅ Attache l'utilisateur réel à la socket
       next();
     } catch (error) {
-      console.error("Erreur d'authentification Socket:", error);
+      logger.error("Erreur d'authentification Socket:", { error });
       next(new Error('Authentication error'));
     }
   });
 
-
   // --- Gestion des Événements de Connexion ---
   io.on('connection', (socket) => {
-    console.log(`✅ Utilisateur connecté via WebSocket: ${socket.user.firstName} (ID de socket: ${socket.id})`);
+    logger.info(`✅ Utilisateur connecté via WebSocket: ${socket.user.firstName} (ID de socket: ${socket.id})`);
 
-    // Chaque utilisateur rejoint une "room" privée portant son propre ID MongoDB.
-    // Cela permet de lui envoyer des notifications de manière ciblée et sécurisée.
     const userRoom = socket.user._id.toString();
     socket.join(userRoom);
-    console.log(`   > ${socket.user.firstName} a rejoint la room privée: ${userRoom}`);
+    logger.info(`   > ${socket.user.firstName} a rejoint la room privée: ${userRoom}`);
 
-    // Gérer la déconnexion
     socket.on('disconnect', () => {
-      console.log(`❌ Utilisateur déconnecté: ${socket.user.firstName} (ID de socket: ${socket.id})`);
+      logger.info(`❌ Utilisateur déconnecté: ${socket.user.firstName} (ID de socket: ${socket.id})`);
     });
   });
 
-  console.log('📡 Serveur Socket.IO initialisé et en attente de connexions.');
+  logger.info('📡 Serveur Socket.IO initialisé et en attente de connexions.');
   return io;
 };
 
