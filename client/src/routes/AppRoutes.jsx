@@ -36,6 +36,8 @@ import FacturesListPage from '../pages/ventes/FacturesList';
 import FactureForm from '../pages/ventes/FactureForm';
 import FactureDetailPage from '../pages/ventes/FactureDetail';
 import BonLivraisonPage from '../pages/ventes/BonLivraison'; 
+import CommandesAchatPage from '../pages/achats/CommandesAchat';
+import FacturesAchatPage from '../pages/achats/FacturesAchat';
 import NotFoundPage from '../pages/errors/NotFound';
 
 const Placeholder = ({ title }) => <h2 className="p-4">{title} - À construire</h2>;
@@ -100,6 +102,11 @@ const AppRoutes = () => {
           <Route path="/ventes/factures/:id/modifier" element={<FactureForm />} />
           <Route path="/ventes/factures/:id" element={<FactureDetailPage />} />
           <Route path="/ventes/bon-livraisons/:id" element={<BonLivraisonPage />} />
+
+          {/* --- Module Achats --- */}
+          <Route path="/parametres" element={<Placeholder title="Paramètres" />} />
+          <Route path="/achats/commandes" element={<CommandesAchatPage />} />
+          <Route path="/achats/factures" element={<FacturesAchatPage />} />
 
           {/* --- Placeholders --- */}
           
