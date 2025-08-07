@@ -1,7 +1,8 @@
 // server/controllers/dashboard/rapportController.js
 const balanceService = require('../../services/comptabilite/balanceService');
 const bilanService = require('../../services/comptabilite/bilanService');
-const fiscalService = require('../../services/comptabilite/fiscalService'); // Corrigé le chemin
+const resultatService = require('../../services/comptabilite/resultatService'); // Importer le nouveau service
+const fiscalService = require('../../services/comptabilite/fiscalService');
 const Facture = require('../../models/commercial/Facture');
 const AppError = require('../../utils/appError');
 const asyncHandler = require('../../utils/asyncHandler');
@@ -9,15 +10,9 @@ const { roundTo } = require('../../utils/numberUtils');
 
 exports.getRapportVentes = asyncHandler(async (req, res, next) => {
     const { dateDebut, dateFin } = req.query;
-    if (!dateDebut || !dateFin) {
-        return next(new AppError('Veuillez fournir une période (dateDebut et dateFin).', 400));
-    }
-
+    if (!dateDebut || !dateFin) return next(new AppError('Période requise.', 400));
     const debut = new Date(dateDebut);
     const fin = new Date(dateFin);
-    if (isNaN(debut.getTime()) || isNaN(fin.getTime())) {
-        return next(new AppError('Format de date invalide.', 400));
-    }
 
     const factures = await Facture.find({
         statut: { $in: ['Payée', 'Partiellement payée', 'En retard', 'Envoyée'] },
@@ -51,10 +46,23 @@ exports.getBilan = asyncHandler(async (req, res, next) => {
     res.status(200).json({ status: 'success', data: { bilan } });
 });
 
+// === AJOUTER CETTE FONCTION ===
+exports.genererCompteDeResultat = asyncHandler(async (req, res, next) => {
+    const { dateDebut, dateFin } = req.query;
+    if (!dateDebut || !dateFin) {
+        return next(new AppError('Période requise.', 400));
+    }
+    const resultat = await resultatService.genererCompteDeResultat({ dateDebut, dateFin });
+    res.status(200).json({
+        status: 'success',
+        data: { compteDeResultat: resultat }
+    });
+});
+// =============================
+
 exports.getDeclarationTVA = asyncHandler(async (req, res, next) => {
     const { annee, mois } = req.query;
     if (!annee || !mois) return next(new AppError('Année et mois requis.', 400));
-
     const declarationTVA = await fiscalService.calculerDeclarationTVA({ annee: parseInt(annee), mois: parseInt(mois) });
     res.status(200).json({ status: 'success', data: { declarationTVA } });
 });
