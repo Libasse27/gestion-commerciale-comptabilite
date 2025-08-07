@@ -39,6 +39,9 @@ import BonLivraisonPage from '../pages/ventes/BonLivraison';
 import CommandesAchatPage from '../pages/achats/CommandesAchat';
 import FacturesAchatPage from '../pages/achats/FacturesAchat';
 import ReceptionsPage from '../pages/achats/Receptions';
+import PlanComptablePage from '../pages/comptabilite/PlanComptable';
+
+
 import NotFoundPage from '../pages/errors/NotFound';
 import UnauthorizedPage from '../pages/errors/Unauthorized';
 import ServerErrorPage from '../pages/errors/ServerError';
@@ -112,9 +115,11 @@ const AppRoutes = () => {
           <Route path="/achats/factures" element={<FacturesAchatPage />} />
           <Route path="/achats/receptions" element={<ReceptionsPage />} />
 
+          {/* --- Module Comptabilité --- */}
+          <Route path="/comptabilite/plan" element={<PlanComptablePage />} />
+
           {/* --- Placeholders --- */}
           
-          <Route path="/comptabilite" element={<Placeholder title="Comptabilité" />} />
           <Route path="/parametres" element={<Placeholder title="Paramètres" />} />
         </Route>
       </Route>
