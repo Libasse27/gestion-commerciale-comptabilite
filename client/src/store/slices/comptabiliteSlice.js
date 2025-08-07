@@ -4,72 +4,74 @@ import comptabiliteService from '../../services/comptabiliteService';
 import { getErrorMessage } from '../../utils/helpers';
 import { REDUX_SLICE_NAMES } from '../../utils/constants';
 
-// --- Thunks ---
-export const fetchPlanComptable = createAsyncThunk(
-  `${REDUX_SLICE_NAMES.COMPTABILITE}/fetchPlan`,
-  async (_, thunkAPI) => {
-    try {
-      return await comptabiliteService.getPlanComptable();
-    } catch (error) {
-      return thunkAPI.rejectWithValue(getErrorMessage(error));
-    }
-  }
-);
+const sliceName = REDUX_SLICE_NAMES.COMPTABILITE;
 
-export const fetchEcritures = createAsyncThunk(
-  `${REDUX_SLICE_NAMES.COMPTABILITE}/fetchEcritures`,
-  async (params, thunkAPI) => {
-    try {
-      return await comptabiliteService.getAllEcritures(params);
-    } catch (error) {
-      return thunkAPI.rejectWithValue(getErrorMessage(error));
-    }
-  }
-);
+// --- Thunks ---
+export const fetchPlanComptable = createAsyncThunk(`${sliceName}/fetchPlan`, async (_, t) => { try { return await comptabiliteService.getPlanComptable(); } catch (e) { return t.rejectWithValue(getErrorMessage(e)); }});
+export const fetchEcritures = createAsyncThunk(`${sliceName}/fetchEcritures`, async (p, t) => { try { return await comptabiliteService.getAllEcritures(p); } catch (e) { return t.rejectWithValue(getErrorMessage(e)); }});
+export const fetchBalanceGenerale = createAsyncThunk(`${sliceName}/fetchBalance`, async (p, t) => { try { return await comptabiliteService.getBalanceGenerale(p); } catch (e) { return t.rejectWithValue(getErrorMessage(e)); }});
+export const fetchGrandLivre = createAsyncThunk(`${sliceName}/fetchGrandLivre`, async (p, t) => { try { return await comptabiliteService.getGrandLivre(p); } catch (e) { return t.rejectWithValue(getErrorMessage(e)); }});
+export const fetchBilan = createAsyncThunk(`${sliceName}/fetchBilan`, async (dateFin, t) => { try { return await comptabiliteService.getBilan(dateFin); } catch (e) { return t.rejectWithValue(getErrorMessage(e)); }});
 
 // --- Slice ---
 const initialState = {
-  planComptable: [],
-  ecritures: [],
-  pagination: {},
-  status: 'idle',
-  message: '',
+  planComptable: [], ecritures: [], balance: null, grandLivre: null, bilan: null,
+  pagination: {}, status: 'idle', statusReports: 'idle', message: '',
 };
 
 export const comptabiliteSlice = createSlice({
-  name: REDUX_SLICE_NAMES.COMPTABILITE,
+  name: sliceName,
   initialState,
   reducers: {
-    reset: (state) => {
-      state.status = 'idle';
-      state.message = '';
-    },
+    reset: (state) => { /* ... */ },
+    resetReport: (state) => { /* ... */ }
   },
   extraReducers: (builder) => {
     builder
-      // Plan Comptable
-      .addCase(fetchPlanComptable.pending, (state) => { state.status = 'loading'; })
-      .addCase(fetchPlanComptable.fulfilled, (state, action) => {
-        state.status = 'succeeded';
-        state.planComptable = action.payload;
-      })
-      .addCase(fetchPlanComptable.rejected, (state, action) => {
-        state.status = 'failed';
-        state.message = action.payload;
-      })
-      // Écritures
-      .addCase(fetchEcritures.pending, (state) => { state.status = 'loading'; })
+      // Spécifiques
+      .addCase(fetchPlanComptable.fulfilled, (state, action) => { state.planComptable = action.payload; })
       .addCase(fetchEcritures.fulfilled, (state, action) => {
-        state.status = 'succeeded';
         state.ecritures = action.payload.data.ecritures;
         state.pagination = action.payload.pagination;
       })
-      .addCase(fetchEcritures.rejected, (state, action) => {
-        state.status = 'failed';
-        state.message = action.payload;
-      });
+      .addCase(fetchBalanceGenerale.fulfilled, (state, action) => { state.balance = action.payload; })
+      .addCase(fetchGrandLivre.fulfilled, (state, action) => { state.grandLivre = action.payload; })
+      .addCase(fetchBilan.fulfilled, (state, action) => { state.bilan = action.payload; })
+      
+      // Génériques
+      .addMatcher(
+        (action) => action.type.startsWith(sliceName) && action.type.endsWith('/pending'),
+        (state, action) => {
+          if (action.type.includes('Balance') || action.type.includes('Bilan') || action.type.includes('GrandLivre')) {
+            state.statusReports = 'loading';
+          } else {
+            state.status = 'loading';
+          }
+        }
+      )
+      .addMatcher(
+        (action) => action.type.startsWith(sliceName) && action.type.endsWith('/fulfilled'),
+        (state, action) => {
+          if (action.type.includes('Balance') || action.type.includes('Bilan') || action.type.includes('GrandLivre')) {
+            state.statusReports = 'succeeded';
+          } else {
+            state.status = 'succeeded';
+          }
+        }
+      )
+      .addMatcher(
+        (action) => action.type.startsWith(sliceName) && action.type.endsWith('/rejected'),
+        (state, action) => {
+          if (action.type.includes('Balance') || action.type.includes('Bilan') || action.type.includes('GrandLivre')) {
+            state.statusReports = 'failed';
+          } else {
+            state.status = 'failed';
+          }
+          state.message = action.payload;
+        }
+      );
   },
 });
 
-export const { reset } = comptabiliteSlice.actions;
+export const { reset, resetReport } = comptabiliteSlice.actions;
 export default comptabiliteSlice.reducer;
