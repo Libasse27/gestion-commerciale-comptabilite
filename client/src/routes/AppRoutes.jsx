@@ -41,9 +41,11 @@ import FacturesAchatPage from '../pages/achats/FacturesAchat';
 import ReceptionsPage from '../pages/achats/Receptions';
 import PlanComptablePage from '../pages/comptabilite/PlanComptable';
 import EcrituresPage from '../pages/comptabilite/Ecritures';
+import EcritureFormPage from '../pages/comptabilite/EcritureForm';
 import BalancePage from '../pages/comptabilite/Balance';
 import GrandLivrePage from '../pages/comptabilite/GrandLivre'; 
 import BilanPage from '../pages/comptabilite/Bilan';
+import ResultatNetPage from '../pages/comptabilite/ResultatNet'; 
 
 import NotFoundPage from '../pages/errors/NotFound';
 import UnauthorizedPage from '../pages/errors/Unauthorized';
@@ -121,9 +123,11 @@ const AppRoutes = () => {
           {/* --- Module Comptabilité --- */}
           <Route path="/comptabilite/plan" element={<PlanComptablePage />} />
           <Route path="/comptabilite/ecritures" element={<EcrituresPage />} />
+          <Route path="/comptabilite/ecritures/nouveau" element={<EcritureFormPage />} />
           <Route path="/comptabilite/balance" element={<BalancePage />} />
           <Route path="/comptabilite/grand-livre" element={<GrandLivrePage />} />
           <Route path="/comptabilite/bilan" element={<BilanPage />} />
+          <Route path="/comptabilite/resultat" element={<ResultatNetPage />} />
 
           {/* --- Placeholders --- */}
           
