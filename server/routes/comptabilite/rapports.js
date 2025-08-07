@@ -1,12 +1,18 @@
+// server/routes/comptabilite/rapports.js
 const express = require('express');
-const rapportController = require('../../controllers/comptabilite/rapportController');
+const rapportController = require('../../controllers/dashboard/rapportController'); // Le nom vient d'ici
 const { checkPermission } = require('../../middleware/permissions');
+const compteDeResultatRoutes = require('./compteDeResultat');
 
 const router = express.Router();
-router.use(checkPermission('comptabilite:read'));
+// La permission de base est déjà gérée par le routeur parent `comptabilite.js`
 
-router.get('/balance', rapportController.genererBalance);
-router.get('/bilan', rapportController.genererBilan);
-router.get('/compte-de-resultat', rapportController.genererCompteDeResultat);
+// Routes pour les rapports gérés par le contrôleur principal des rapports
+router.get('/balance-generale', rapportController.getBalanceGenerale);
+router.get('/bilan', rapportController.getBilan);
+router.get('/declaration-tva', rapportController.getDeclarationTVA); // Assurez-vous que cette route est là aussi
+
+// Utiliser le sous-routeur dédié pour toutes les routes liées au compte de résultat
+router.use('/compte-de-resultat', compteDeResultatRoutes);
 
 module.exports = router;
