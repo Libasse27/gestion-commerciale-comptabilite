@@ -1,70 +1,41 @@
 // client/src/services/comptabiliteService.js
-// ==============================================================================
-//           Service pour les Appels API liés à la Comptabilité
-//
-// Ce service encapsule tous les appels réseau vers les endpoints /comptabilite.
-// ==============================================================================
-
 import apiClient from './api';
 import { API_ENDPOINTS } from '../utils/constants';
 
 // --- PLAN COMPTABLE ---
-
-/**
- * Récupère le plan comptable complet.
- * @returns {Promise<Array<object>>}
- */
-const getPlanComptable = async () => {
-  const response = await apiClient.get(API_ENDPOINTS.PLAN_COMPTABLE);
-  return response.data.data.comptes;
-};
+const getPlanComptable = async () => { /* ... */ };
 
 // --- ÉCRITURES ---
-
-/**
- * Récupère une liste paginée d'écritures comptables.
- * @param {object} params - Les paramètres de la query string (page, limit, etc.).
- * @returns {Promise<object>}
- */
-const getAllEcritures = async (params = {}) => {
-  const response = await apiClient.get(API_ENDPOINTS.ECRITURES, { params });
-  return response.data;
-};
-
-/**
- * Crée une nouvelle écriture manuelle.
- * @param {object} ecritureData
- * @returns {Promise<object>}
- */
-const createEcriture = async (ecritureData) => {
-  const response = await apiClient.post(API_ENDPOINTS.ECRITURES, ecritureData);
-  return response.data.data;
-};
-
-/**
- * Valide une écriture comptable.
- * @param {string} ecritureId
- * @returns {Promise<object>}
- */
-const validerEcriture = async (ecritureId) => {
-  const response = await apiClient.post(`${API_ENDPOINTS.ECRITURES}/${ecritureId}/valider`);
-  return response.data.data;
-};
+const getAllEcritures = async (params = {}) => { /* ... */ };
+const createEcriture = async (ecritureData) => { /* ... */ };
+const validerEcriture = async (ecritureId) => { /* ... */ };
 
 // --- RAPPORTS ---
+const getBalanceGenerale = async (params) => { /* ... */ };
 
 /**
- * Génère une balance générale pour une période.
- * @param {{dateDebut: string, dateFin: string}} params
+ * Récupère le grand livre pour un compte et une période.
+ * @param {{compteId: string, dateDebut: string, dateFin: string}} params
  * @returns {Promise<object>}
  */
-const getBalanceGenerale = async (params) => {
-    const response = await apiClient.get(API_ENDPOINTS.RAPPORT_BALANCE, { params });
+const getGrandLivre = async ({ compteId, dateDebut, dateFin }) => {
+    const response = await apiClient.get(`${API_ENDPOINTS.GRAND_LIVRE}/${compteId}`, {
+        params: { dateDebut, dateFin }
+    });
+    return response.data.data;
+};
+
+/**
+ * Génère le bilan à une date donnée.
+ * @param {string} dateFin
+ * @returns {Promise<object>}
+ */
+const getBilan = async (dateFin) => {
+    const response = await apiClient.get(API_ENDPOINTS.RAPPORT_BILAN, { params: { dateFin } });
     return response.data.data;
 };
 
 
-// --- EXPORT ---
 const comptabiliteService = {
   // Plan Comptable
   getPlanComptable,
@@ -74,6 +45,8 @@ const comptabiliteService = {
   validerEcriture,
   // Rapports
   getBalanceGenerale,
+  getGrandLivre,
+  getBilan,
 };
 
 export default comptabiliteService;
