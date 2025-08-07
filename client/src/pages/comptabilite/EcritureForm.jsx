@@ -1,0 +1,1 @@
+//creer client/src/pages/comptabilite/EcritureForm.jsx

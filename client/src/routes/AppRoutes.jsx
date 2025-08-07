@@ -41,6 +41,7 @@ import FacturesAchatPage from '../pages/achats/FacturesAchat';
 import ReceptionsPage from '../pages/achats/Receptions';
 import PlanComptablePage from '../pages/comptabilite/PlanComptable';
 import EcrituresPage from '../pages/comptabilite/Ecritures';
+import BalancePage from '../pages/comptabilite/Balance';
 
 
 import NotFoundPage from '../pages/errors/NotFound';
@@ -119,6 +120,7 @@ const AppRoutes = () => {
           {/* --- Module Comptabilité --- */}
           <Route path="/comptabilite/plan" element={<PlanComptablePage />} />
           <Route path="/comptabilite/ecritures" element={<EcrituresPage />} />
+          <Route path="/comptabilite/balance" element={<BalancePage />} />
 
           {/* --- Placeholders --- */}
           
