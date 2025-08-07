@@ -40,6 +40,8 @@ import CommandesAchatPage from '../pages/achats/CommandesAchat';
 import FacturesAchatPage from '../pages/achats/FacturesAchat';
 import ReceptionsPage from '../pages/achats/Receptions';
 import NotFoundPage from '../pages/errors/NotFound';
+import UnauthorizedPage from '../pages/errors/Unauthorized';
+import ServerErrorPage from '../pages/errors/ServerError';
 
 const Placeholder = ({ title }) => <h2 className="p-4">{title} - À construire</h2>;
 
@@ -119,6 +121,12 @@ const AppRoutes = () => {
 
       {/* Route 404 */}
       <Route path="*" element={<NotFoundPage />} />
+
+      {/* Route 401 */}
+      <Route path="/401" element={<UnauthorizedPage />} />
+
+      {/* Route 500 */}
+      <Route path="/500" element={<ServerErrorPage />} />
     </Routes>
   );
 };

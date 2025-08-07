@@ -1,4 +1,4 @@
-/ client/src/pages/achats/ReceptionsPage.jsx
+// client/src/pages/achats/ReceptionsPage.jsx
 import React from 'react';
 import { Card, Row, Col, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
