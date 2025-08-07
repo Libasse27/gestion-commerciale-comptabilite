@@ -8,7 +8,8 @@ import fournisseursReducer from './slices/fournisseursSlice'; // <-- Importer
 import produitsReducer from './slices/produitsSlice';
 import stockReducer from './slices/stockSlice';
 import ventesReducer from './slices/ventesSlice';
-import achatsReducer from './slices/achatsSlice'; // <-- Importer le slice des achats
+import achatsReducer from './slices/achatsSlice';
+import comptabiliteReducer from './slices/comptabiliteSlice'; 
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -20,6 +21,7 @@ const rootReducer = combineReducers({
   stock: stockReducer,
   ventes: ventesReducer, 
   achats: achatsReducer, 
+  comptabilite: comptabiliteReducer,
 });
 
 export default rootReducer;
