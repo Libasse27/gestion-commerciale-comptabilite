@@ -42,7 +42,8 @@ import ReceptionsPage from '../pages/achats/Receptions';
 import PlanComptablePage from '../pages/comptabilite/PlanComptable';
 import EcrituresPage from '../pages/comptabilite/Ecritures';
 import BalancePage from '../pages/comptabilite/Balance';
-
+import GrandLivrePage from '../pages/comptabilite/GrandLivre'; 
+import BilanPage from '../pages/comptabilite/Bilan';
 
 import NotFoundPage from '../pages/errors/NotFound';
 import UnauthorizedPage from '../pages/errors/Unauthorized';
@@ -121,6 +122,8 @@ const AppRoutes = () => {
           <Route path="/comptabilite/plan" element={<PlanComptablePage />} />
           <Route path="/comptabilite/ecritures" element={<EcrituresPage />} />
           <Route path="/comptabilite/balance" element={<BalancePage />} />
+          <Route path="/comptabilite/grand-livre" element={<GrandLivrePage />} />
+          <Route path="/comptabilite/bilan" element={<BilanPage />} />
 
           {/* --- Placeholders --- */}
           
