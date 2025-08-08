@@ -81,6 +81,7 @@ import RapportsFiscauxPage from '../pages/rapports/RapportsFiscaux';
 
 // --- Parametres ---
 import UtilisateursPage from '../pages/parametres/Utilisateurs';
+import RolesPage from '../pages/parametres/Roles';
 
 // --- Error Pages ---
 import NotFoundPage from '../pages/errors/NotFound';
@@ -180,6 +181,7 @@ const AppRoutes = () => (
 
         {/* --- Paramètres --- */}
         <Route path="/parametres/utilisateurs" element={<UtilisateursPage />} />
+        <Route path="/parametres/roles" element={<RolesPage />} />
 
       </Route>
     </Route>
