@@ -4,33 +4,24 @@
 //
 // Ce composant sert de point d'entrée pour le rendu de toutes les routes.
 // C'est la coquille la plus externe de notre application après les providers.
-//
-// Il est l'endroit idéal pour placer une logique qui doit s'exécuter
-// une seule fois au chargement de l'application, comme la vérification
-// initiale de la session ou la configuration de bibliothèques globales.
 // ==============================================================================
 
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 const Root = () => {
-  // Pour l'instant, ce composant ne fait qu'afficher les routes enfants.
-  // On pourrait y ajouter un useEffect pour une logique d'initialisation.
-  // Exemple :
-  useEffect(() => {
-    //   dispatch(trySilentLogin()); // Tenter de rafraîchir le token au premier chargement
-  }, [dispatch]);
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
 
-  return (
-    <>
-      {/* 
-        <Outlet /> est le placeholder où React Router va rendre la route 
-        qui correspond à l'URL actuelle. Ce sera soit les routes publiques, 
-        soit les routes privées.
-      */}
-      <Outlet />
-    </>
-  );
+  // Si l'utilisateur est sur la page racine "/", on le redirige.
+  if (location.pathname === '/') {
+    return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
+  }
+  
+  // Pour toutes les autres routes, on laisse React Router décider
+  // en affichant la route enfant correspondante.
+  return <Outlet />;
 };
 
 export default Root;
