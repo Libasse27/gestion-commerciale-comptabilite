@@ -77,6 +77,7 @@ import RapportsVentesPage from '../pages/rapports/RapportsVentes';
 import RapportsAchatsPage from '../pages/rapports/RapportsAchats';
 import RapportsStockPage from '../pages/rapports/RapportsStock';
 import RapportsComptablesPage from '../pages/rapports/RapportsComptables';
+import RapportsFiscauxPage from '../pages/rapports/RapportsFiscaux';
 
 // --- Error Pages ---
 import NotFoundPage from '../pages/errors/NotFound';
@@ -172,6 +173,7 @@ const AppRoutes = () => (
         <Route path="/rapports/achats" element={<RapportsAchatsPage />} />
         <Route path="/rapports/stock" element={<RapportsStockPage />} />
         <Route path="/rapports/comptables" element={<RapportsComptablesPage />} />
+        <Route path="/rapports/fiscaux" element={<RapportsFiscauxPage />} />
 
         {/* --- Paramètres (à venir) --- */}
         <Route path="/parametres" element={<Placeholder title="Paramètres" />} />
