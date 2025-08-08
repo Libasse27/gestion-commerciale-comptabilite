@@ -10,6 +10,7 @@ import stockReducer from './slices/stockSlice';
 import ventesReducer from './slices/ventesSlice';
 import achatsReducer from './slices/achatsSlice';
 import comptabiliteReducer from './slices/comptabiliteSlice'; 
+import paiementsReducer from './slices/paiementsSlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -22,6 +23,7 @@ const rootReducer = combineReducers({
   ventes: ventesReducer, 
   achats: achatsReducer, 
   comptabilite: comptabiliteReducer,
+  paiements: paiementsReducer,
 });
 
 export default rootReducer;
