@@ -75,6 +75,7 @@ import MobileMoneyPage from '../pages/paiements/MobileMoney';
 // --- Rapports ---
 import RapportsVentesPage from '../pages/rapports/RapportsVentes';
 import RapportsAchatsPage from '../pages/rapports/RapportsAchats';
+import RapportsStockPage from '../pages/rapports/RapportsStock';
 
 // --- Error Pages ---
 import NotFoundPage from '../pages/errors/NotFound';
@@ -168,6 +169,7 @@ const AppRoutes = () => (
         {/* --- Rapports --- */}
         <Route path="/rapports/ventes" element={<RapportsVentesPage />} />
         <Route path="/rapports/achats" element={<RapportsAchatsPage />} />
+        <Route path="/rapports/stock" element={<RapportsStockPage />} />
 
         {/* --- Paramètres (à venir) --- */}
         <Route path="/parametres" element={<Placeholder title="Paramètres" />} />
