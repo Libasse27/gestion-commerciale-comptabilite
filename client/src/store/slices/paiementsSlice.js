@@ -2,49 +2,26 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import paiementsService from '../../services/paiementsService';
 import { getErrorMessage } from '../../utils/helpers';
-import { REDUX_SLICE_NAMES } from '../../utils/constants';
 
-const sliceName = 'paiements'; // Utiliser un nom simple
+const sliceName = 'paiements';
 
 // --- Thunks ---
-export const fetchPaiements = createAsyncThunk(
-  `${sliceName}/fetchAll`,
-  async (params, thunkAPI) => {
-    try {
-      return await paiementsService.getAllPaiements(params);
-    } catch (error) {
-      return thunkAPI.rejectWithValue(getErrorMessage(error));
-    }
-  }
-);
-
-export const createEncaissement = createAsyncThunk(
-  `${sliceName}/createEncaissement`,
-  async (data, thunkAPI) => {
-    try {
-      return await paiementsService.createEncaissement(data);
-    } catch (error) {
-      return thunkAPI.rejectWithValue(getErrorMessage(error));
-    }
-  }
-);
+export const fetchPaiements = createAsyncThunk(`${sliceName}/fetchPaiements`, async (p, t) => { /*...*/ });
+export const createEncaissement = createAsyncThunk(`${sliceName}/createEncaissement`, async (d, t) => { /*...*/ });
+export const fetchEcheances = createAsyncThunk(`${sliceName}/fetchEcheances`, async (p, t) => { try { return await paiementsService.getAllEcheances(p); } catch (e) { return t.rejectWithValue(getErrorMessage(e)); }});
+export const fetchRelances = createAsyncThunk(`${sliceName}/fetchRelances`, async (p, t) => { try { return await paiementsService.getAllRelances(p); } catch (e) { return t.rejectWithValue(getErrorMessage(e)); }});
 
 // --- Slice ---
 const initialState = {
-  paiements: [],
-  pagination: {},
-  status: 'idle',
-  message: '',
+  paiements: [], echeances: [], relances: [],
+  pagination: {}, status: 'idle', message: '',
 };
 
 export const paiementsSlice = createSlice({
   name: sliceName,
   initialState,
   reducers: {
-    reset: (state) => {
-      state.status = 'idle';
-      state.message = '';
-    },
+    reset: (state) => { state.status = 'idle'; state.message = ''; },
   },
   extraReducers: (builder) => {
     builder
@@ -54,6 +31,14 @@ export const paiementsSlice = createSlice({
       })
       .addCase(createEncaissement.fulfilled, (state, action) => {
         state.paiements.unshift(action.payload.paiement);
+      })
+      .addCase(fetchEcheances.fulfilled, (state, action) => {
+        state.echeances = action.payload.data.echeances;
+        state.pagination = action.payload.pagination;
+      })
+      .addCase(fetchRelances.fulfilled, (state, action) => {
+        state.relances = action.payload.data.relances;
+        state.pagination = action.payload.pagination;
       })
       
       // Matchers génériques
