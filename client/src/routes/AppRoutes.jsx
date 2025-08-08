@@ -79,6 +79,9 @@ import RapportsStockPage from '../pages/rapports/RapportsStock';
 import RapportsComptablesPage from '../pages/rapports/RapportsComptables';
 import RapportsFiscauxPage from '../pages/rapports/RapportsFiscaux';
 
+// --- Parametres ---
+import UtilisateursPage from '../pages/parametres/Utilisateurs';
+
 // --- Error Pages ---
 import NotFoundPage from '../pages/errors/NotFound';
 import UnauthorizedPage from '../pages/errors/Unauthorized';
@@ -175,8 +178,9 @@ const AppRoutes = () => (
         <Route path="/rapports/comptables" element={<RapportsComptablesPage />} />
         <Route path="/rapports/fiscaux" element={<RapportsFiscauxPage />} />
 
-        {/* --- Paramètres (à venir) --- */}
-        <Route path="/parametres" element={<Placeholder title="Paramètres" />} />
+        {/* --- Paramètres --- */}
+        <Route path="/parametres/utilisateurs" element={<UtilisateursPage />} />
+
       </Route>
     </Route>
 
