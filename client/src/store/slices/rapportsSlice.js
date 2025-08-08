@@ -1,51 +1,22 @@
-// client/src/store/slices/rapportsSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import rapportsService from '../../services/rapportsService';
 import { getErrorMessage } from '../../utils/helpers';
 import { REDUX_SLICE_NAMES } from '../../utils/constants';
 
-const sliceName = 'rapports'; // Utiliser un nom simple
+const sliceName = 'rapports';
 
 // --- Thunks ---
-export const fetchRapportVentes = createAsyncThunk(
-  `${sliceName}/fetchVentes`,
-  async (params, thunkAPI) => {
-    try {
-      return await rapportsService.getRapportVentes(params);
-    } catch (error) {
-      return thunkAPI.rejectWithValue(getErrorMessage(error));
-    }
-  }
-);
-
-export const fetchRapportAchats = createAsyncThunk(
-  `${sliceName}/fetchAchats`,
-  async (params, thunkAPI) => {
-    try {
-      return await rapportsService.getRapportAchats(params);
-    } catch (error) {
-      return thunkAPI.rejectWithValue(getErrorMessage(error));
-    }
-  }
-);
-
-export const fetchRapportStock = createAsyncThunk(
-  `${sliceName}/fetchStock`,
-  async (_, thunkAPI) => {
-    try {
-      return await rapportsService.getRapportStock();
-    } catch (error) {
-      return thunkAPI.rejectWithValue(getErrorMessage(error));
-    }
-  }
-);
-
+export const fetchRapportVentes = createAsyncThunk(`${sliceName}/fetchVentes`, async (p, t) => { try { return await rapportsService.getRapportVentes(p); } catch (e) { return t.rejectWithValue(getErrorMessage(e)); }});
+export const fetchRapportAchats = createAsyncThunk(`${sliceName}/fetchAchats`, async (p, t) => { try { return await rapportsService.getRapportAchats(p); } catch (e) { return t.rejectWithValue(getErrorMessage(e)); }});
+export const fetchRapportStock = createAsyncThunk(`${sliceName}/fetchStock`, async (_, t) => { try { return await rapportsService.getRapportStock(); } catch (e) { return t.rejectWithValue(getErrorMessage(e)); }});
+export const fetchDeclarationTVA = createAsyncThunk(`${sliceName}/fetchTVA`, async (p, t) => { try { return await rapportsService.getDeclarationTVA(p); } catch (e) { return t.rejectWithValue(getErrorMessage(e)); }});
 
 // --- Slice ---
 const initialState = {
   rapportVentes: null,
   rapportAchats: null,
   rapportStock: null,
+  declarationTVA: null,
   status: 'idle',
   message: '',
 };
@@ -60,24 +31,18 @@ export const rapportsSlice = createSlice({
       state.rapportVentes = null;
       state.rapportAchats = null;
       state.rapportStock = null;
+      state.declarationTVA = null;
     },
   },
   extraReducers: (builder) => {
     builder
-      // Rapport Ventes
-      .addCase(fetchRapportVentes.fulfilled, (state, action) => {
-        state.rapportVentes = action.payload;
-      })
-      // Rapport Achats
-      .addCase(fetchRapportAchats.fulfilled, (state, action) => {
-        state.rapportAchats = action.payload;
-      })
-      // Rapport Stock
-      .addCase(fetchRapportStock.fulfilled, (state, action) => {
-        state.rapportStock = action.payload;
-      })
-
-      // Matchers génériques
+      // Spécifiques
+      .addCase(fetchRapportVentes.fulfilled, (state, action) => { state.rapportVentes = action.payload; })
+      .addCase(fetchRapportAchats.fulfilled, (state, action) => { state.rapportAchats = action.payload; })
+      .addCase(fetchRapportStock.fulfilled, (state, action) => { state.rapportStock = action.payload; })
+      .addCase(fetchDeclarationTVA.fulfilled, (state, action) => { state.declarationTVA = action.payload.declarationTVA; })
+      
+      // Génériques
       .addMatcher(
         (action) => action.type.startsWith(`${sliceName}/`) && action.type.endsWith('/pending'),
         (state) => { state.status = 'loading'; }
