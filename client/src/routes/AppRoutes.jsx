@@ -70,6 +70,7 @@ import PaiementFormPage from '../pages/paiements/PaiementForm';
 import PaiementsListPage from '../pages/paiements/PaiementsList';
 import EcheanciersPage from '../pages/paiements/Echeanciers';
 import RelancesPage from '../pages/paiements/Relances';
+import MobileMoneyPage from '../pages/paiements/MobileMoney';
 
 // --- Error Pages ---
 import NotFoundPage from '../pages/errors/NotFound';
@@ -158,6 +159,7 @@ const AppRoutes = () => (
         <Route path="/paiements/nouveau" element={<PaiementFormPage />} />
         <Route path="/paiements/echeanciers" element={<EcheanciersPage />} />
         <Route path="/paiements/relances" element={<RelancesPage />} />
+        <Route path="/paiements/mobile-money" element={<MobileMoneyPage />} />
 
         {/* --- Paramètres (à venir) --- */}
         <Route path="/parametres" element={<Placeholder title="Paramètres" />} />
