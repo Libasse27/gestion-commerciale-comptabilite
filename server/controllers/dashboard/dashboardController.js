@@ -2,25 +2,21 @@
 const statistiquesService = require('../../services/statistiques/statistiquesService');
 const tresorerieService = require('../../services/paiements/tresorerieService');
 const Facture = require('../../models/commercial/Facture');
+const AlerteStock = require('../../models/stock/AlerteStock'); // Importer le modèle
 const asyncHandler = require('../../utils/asyncHandler');
 const { startOfDay, endOfDay, subDays } = require('date-fns');
 const { DOCUMENT_STATUS } = require('../../utils/constants');
 
-/**
- * @desc    Récupérer toutes les données agrégées pour le tableau de bord principal.
- * @route   GET /api/v1/dashboard
- */
 exports.getMainDashboardData = asyncHandler(async (req, res, next) => {
-  // Période par défaut pour les KPIs : 30 derniers jours
   const dateFin = endOfDay(new Date());
   const dateDebut = startOfDay(subDays(dateFin, 29));
 
-  // Lancement des promesses en parallèle
   const [
     kpisCommerciaux,
     previsionnelTresorerie,
     dernieresFacturesEnRetard,
     salesChartData,
+    alertesDeStock, // Ajouter ici
   ] = await Promise.all([
     statistiquesService.getKpisCommerciaux({ dateDebut, dateFin }),
     tresorerieService.getPrevisionnelTresorerie(30),
@@ -30,6 +26,14 @@ exports.getMainDashboardData = asyncHandler(async (req, res, next) => {
       .populate('client', 'nom')
       .lean(),
     statistiquesService.getVentesAnnuelles(),
+    // === AJOUTER CETTE REQUÊTE ===
+    AlerteStock.find({ statut: 'Active' })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate('produit', 'nom reference')
+        .populate('depot', 'nom')
+        .lean(),
+    // ============================
   ]);
 
   res.status(200).json({
@@ -39,6 +43,7 @@ exports.getMainDashboardData = asyncHandler(async (req, res, next) => {
       previsionnel: previsionnelTresorerie,
       facturesEnRetard: dernieresFacturesEnRetard,
       ventesAnnuelles: salesChartData,
+      alertesDeStock: alertesDeStock, // Ajouter au payload
     },
   });
 });
