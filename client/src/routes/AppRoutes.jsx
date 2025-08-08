@@ -67,6 +67,7 @@ import JournauxPage from '../pages/comptabilite/Journaux';
 
 // --- Paiements ---
 import PaiementFormPage from '../pages/paiements/PaiementForm';
+import PaiementsListPage from '../pages/paiements/PaiementsList';
 
 // --- Error Pages ---
 import NotFoundPage from '../pages/errors/NotFound';
@@ -151,6 +152,7 @@ const AppRoutes = () => (
         <Route path="/comptabilite/journaux" element={<JournauxPage />} />
 
         {/* --- Paiements --- */}
+        <Route path="/paiements" element={<PaiementsListPage />} />
         <Route path="/paiements/nouveau" element={<PaiementFormPage />} />
 
         {/* --- Paramètres (à venir) --- */}
