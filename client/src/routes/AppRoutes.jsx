@@ -72,6 +72,9 @@ import EcheanciersPage from '../pages/paiements/Echeanciers';
 import RelancesPage from '../pages/paiements/Relances';
 import MobileMoneyPage from '../pages/paiements/MobileMoney';
 
+// --- Rapports ---
+import RapportsVentesPage from '../pages/rapports/RapportsVentes';
+
 // --- Error Pages ---
 import NotFoundPage from '../pages/errors/NotFound';
 import UnauthorizedPage from '../pages/errors/Unauthorized';
@@ -160,6 +163,9 @@ const AppRoutes = () => (
         <Route path="/paiements/echeanciers" element={<EcheanciersPage />} />
         <Route path="/paiements/relances" element={<RelancesPage />} />
         <Route path="/paiements/mobile-money" element={<MobileMoneyPage />} />
+
+        {/* --- Rapports --- */}
+        <Route path="/rapports/ventes" element={<RapportsVentesPage />} />
 
         {/* --- Paramètres (à venir) --- */}
         <Route path="/parametres" element={<Placeholder title="Paramètres" />} />
