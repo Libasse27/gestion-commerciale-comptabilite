@@ -17,6 +17,7 @@ import ForgotPasswordPage from '../pages/auth/ForgotPassword';
 // --- Dashboard ---
 import DashboardPage from '../pages/dashboard/Dashboard';
 import StockDashboardPage from '../pages/dashboard/Stock';
+import CommercialDashboardPage from '../pages/dashboard/Commercial';
 
 // --- Clients ---
 import ClientsListPage from '../pages/clients/ClientsList';
@@ -111,6 +112,7 @@ const AppRoutes = () => (
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/dashboard/stock" element={<StockDashboardPage />} />
+         <Route path="/dashboard/commercial" element={<CommercialDashboardPage />} />
 
         {/* --- Clients --- */}
         <Route path="/clients" element={<ClientsListPage />} />
