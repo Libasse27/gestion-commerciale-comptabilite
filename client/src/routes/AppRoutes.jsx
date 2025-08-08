@@ -68,6 +68,7 @@ import JournauxPage from '../pages/comptabilite/Journaux';
 // --- Paiements ---
 import PaiementFormPage from '../pages/paiements/PaiementForm';
 import PaiementsListPage from '../pages/paiements/PaiementsList';
+import EcheanciersPage from '../pages/paiements/Echeanciers';
 
 // --- Error Pages ---
 import NotFoundPage from '../pages/errors/NotFound';
@@ -154,6 +155,7 @@ const AppRoutes = () => (
         {/* --- Paiements --- */}
         <Route path="/paiements" element={<PaiementsListPage />} />
         <Route path="/paiements/nouveau" element={<PaiementFormPage />} />
+        <Route path="/paiements/echeanciers" element={<EcheanciersPage />} />
 
         {/* --- Paramètres (à venir) --- */}
         <Route path="/parametres" element={<Placeholder title="Paramètres" />} />
